@@ -87,6 +87,7 @@ test/ecoli_2kb_region/reads.fasta.index.readdb
 /test/*.index
 /*.paf
 <<<<<<< HEAD
+<<<<<<< HEAD
 /test/uhr
 err.paftest.paf
 =======
@@ -94,3 +95,7 @@ err.paftest.paf
 test/*/results/*.paf
 test/*/results/*.paf.stats
 >>>>>>> haru-rna
+=======
+/test/uhr
+err.paftest.paf
+>>>>>>> fd054b7ae97b1b625849375bc4e22ada8827a5c9
