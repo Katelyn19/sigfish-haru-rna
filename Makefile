@@ -22,14 +22,11 @@ OBJ = $(BUILD_DIR)/main.o \
 	  $(BUILD_DIR)/jnn.o \
 	  $(BUILD_DIR)/misc.o \
 	  $(BUILD_DIR)/eval.o \
-<<<<<<< HEAD
 
 ifdef fpga
 	OBJ +=	$(BUILD_DIR)/haru.o $(BUILD_DIR)/axi_dma.o $(BUILD_DIR)/dtw_accel.o
 	CPPFLAGS += -D FPGA=1 -I HARU/driver/include/
 endif
-=======
->>>>>>> fd054b7ae97b1b625849375bc4e22ada8827a5c9
 
 PREFIX = /usr/local
 VERSION = `git describe --tags`
