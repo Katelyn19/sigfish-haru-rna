@@ -86,5 +86,11 @@ test/ecoli_2kb_region/reads.fasta.index.readdb
 /test/*.gzi
 /test/*.index
 /*.paf
+<<<<<<< HEAD
 /test/uhr
 err.paftest.paf
+=======
+
+test/*/results/*.paf
+test/*/results/*.paf.stats
+>>>>>>> haru-rna

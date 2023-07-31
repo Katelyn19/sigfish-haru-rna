@@ -1,5 +1,5 @@
-CC       = gcc
-CXX      = g++
+CC       ?= gcc
+CXX      ?= g++
 LANGFLAG = -x c++
 CPPFLAGS += -I slow5lib/include/
 CFLAGS   += -g -Wall -O2  -std=c99
@@ -22,6 +22,11 @@ OBJ = $(BUILD_DIR)/main.o \
 	  $(BUILD_DIR)/jnn.o \
 	  $(BUILD_DIR)/misc.o \
 	  $(BUILD_DIR)/eval.o \
+
+ifdef fpga
+	OBJ +=	$(BUILD_DIR)/haru.o $(BUILD_DIR)/axi_dma.o $(BUILD_DIR)/dtw_accel.o
+	CPPFLAGS += -D FPGA=1 -I HARU/driver/include/
+endif
 
 PREFIX = /usr/local
 VERSION = `git describe --tags`
@@ -72,6 +77,17 @@ $(BUILD_DIR)/misc.o: src/misc.c
 $(BUILD_DIR)/eval.o: src/eval.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
+
+
+#haru things
+$(BUILD_DIR)/haru.o: HARU/driver/src/haru.c HARU/driver/include/axi_dma.h HARU/driver/include/dtw_accel.h HARU/driver/include/misc.h
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $(LANGFLAG) $< -c -o $@
+
+$(BUILD_DIR)/axi_dma.o: HARU/driver/src/axi_dma.c HARU/driver/include/axi_dma.h
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $(LANGFLAG) $< -c -o $@
+
+$(BUILD_DIR)/dtw_accel.o: HARU/driver/src/dtw_accel.c HARU/driver/include/dtw_accel.h HARU/driver/include/misc.h
+	$(CXX) $(CFLAGS) $(CPPFLAGS) $(LANGFLAG) $< -c -o $@
 
 slow5lib/lib/libslow5.a:
 	$(MAKE) -C slow5lib zstd=$(zstd) no_simd=$(no_simd) zstd_local=$(zstd_local)  lib/libslow5.a

@@ -8,6 +8,10 @@
 #include <stdint.h>
 #include "slow5/slow5.h"
 
+#ifdef FPGA
+#include <haru.h>
+#endif
+
 #define SIGFISH_VERSION "0.1.0"
 
 //model types
@@ -219,6 +223,10 @@ typedef struct {
     int64_t too_short;   //shorter then the prefix+query set by user, still will be mapped the possible part
 
     refsynth_t *ref;
+
+#ifdef FPGA
+    haru_t *haru;
+#endif
 
 } core_t;
 
