@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include "slow5/slow5.h"
 
-#ifdef FPGA
+#ifdef HAVE_ACC
 #include <haru.h>
 #endif
 
@@ -224,7 +224,7 @@ typedef struct {
 
     refsynth_t *ref;
 
-#ifdef FPGA
+#ifdef HAVE_ACC
     haru_t *haru;
 #endif
 
