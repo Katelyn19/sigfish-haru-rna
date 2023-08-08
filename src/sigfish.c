@@ -95,7 +95,7 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
     //synthetic reference
     core->ref = gen_ref(fastafile,core->model,kmer_size,opt.flag, opt.query_size);
 
-#ifdef FPGA
+#ifdef HAVE_ACC
     core->haru = (haru_t *)malloc(sizeof(haru_t));
     MALLOC_CHK(core->haru);
 
@@ -174,17 +174,13 @@ void free_core(core_t* core,opt_t opt) {
 #ifdef HAVE_ACC
     if (core->opt.flag & SIGFISH_ACC) {
         VERBOSE("%s","Freeing accelator");
+        haru_release(core->haru);
     }
 #endif
 
     free_ref(core->ref);
 
     slow5_close(core->sf);
-
-#ifdef FPGA
-    haru_release(core->haru);
-    free(core->haru);
-#endif
 
     free(core);
 }
@@ -691,7 +687,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i){
     dtw_single(core,db,i);
 
 }
-#ifdef FPGA
+#ifdef HAVE_ACC
 
 void dtw_fpga(core_t* core,db_t* db){
     int32_t i=0;
@@ -780,7 +776,8 @@ void align_db(core_t* core, db_t* db) {
 #ifdef HAVE_ACC
     if (core->opt.flag & SIGFISH_ACC) {
         VERBOSE("%s","Aligning reads with accel");
-        work_db(core,db,dtw_single);
+        dtw_fpga(core,db);
+        // work_db(core,db,dtw_single);
     }
 #endif
 
@@ -816,10 +813,6 @@ void process_db(core_t* core,db_t* db){
     } else {
         work_db(core, db, work_per_single_read);
     }
-
-    #ifdef FPGA
-        dtw_fpga(core,db);
-    #endif
 
     double proc_end = realtime();
     core->process_db_time += (proc_end-proc_start);
