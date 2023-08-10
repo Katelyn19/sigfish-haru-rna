@@ -94,42 +94,6 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
 
     //synthetic reference
     core->ref = gen_ref(fastafile,core->model,kmer_size,opt.flag, opt.query_size);
-
-#ifdef HAVE_ACC
-    core->haru = (haru_t *)malloc(sizeof(haru_t));
-    MALLOC_CHK(core->haru);
-
-    int ret = haru_init(core->haru);
-    if (ret != 0) {
-        ERROR("%s","haru_init failed\n");
-        exit(EXIT_FAILURE);
-    }
-
-    if(core->ref->num_ref>1){
-        ERROR("%s","The FPGA version currently only supports one reference");
-        exit(EXIT_FAILURE);
-    }
-
-    int32_t rlen = core->ref->ref_lengths[0];
-    int32_t *ref = (int32_t *)malloc(sizeof(int32_t) * rlen * 2);
-    MALLOC_CHK(ref);
-
-    for(int i=0;i<rlen;i++){
-        ref[i] = (int32_t) (core->ref->forward[0][i] * 32);
-        ref[i+rlen] = (int32_t) (core->ref->reverse[0][i] *32);
-    }
-
-    // haru_get_load_done(core->haru);
-    if (haru_load_reference(core->haru, ref, rlen * 2) == 0) {
-        ERROR("%s","Load reference incomplete\n");
-        exit(EXIT_FAILURE);
-    }
-    haru_get_load_done(core->haru);
-
-    free(ref);
-
-#endif
-
     core->opt = opt;
 
     //realtime0
@@ -153,6 +117,44 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
 #ifdef HAVE_ACC
     if (core->opt.flag & SIGFISH_ACC) {
         VERBOSE("%s","Initialising accelator");
+        core->haru = (haru_t *)malloc(sizeof(haru_t));
+        MALLOC_CHK(core->haru);
+
+        int ret = haru_init(core->haru);
+        if (ret != 0) {
+            ERROR("%s","haru_init failed\n");
+            exit(EXIT_FAILURE);
+        }
+
+        if(core->ref->num_ref>1){
+            ERROR("%s","The FPGA version currently only supports one reference");
+            exit(EXIT_FAILURE);
+        }
+
+        int32_t rlen = core->ref->ref_lengths[0];
+        int32_t *ref = (int32_t *)malloc(sizeof(int32_t) * rlen * 2);
+        MALLOC_CHK(ref);
+
+        if (core->opt.flag & SIGFISH_RNA) {
+            for(int i=0;i<rlen;i++){
+                ref[i] = (int32_t) (core->ref->forward[0][i] * 32);
+            }
+        } else {
+            for(int i=0;i<rlen;i++){
+                ref[i] = (int32_t) (core->ref->forward[0][i] * 32);
+                ref[i+rlen] = (int32_t) (core->ref->reverse[0][i] *32);
+            }
+        }
+        
+
+        // haru_get_load_done(core->haru);
+        if (haru_load_reference(core->haru, ref, rlen * 2) == 0) {
+            ERROR("%s","Load reference incomplete\n");
+            exit(EXIT_FAILURE);
+        }
+        haru_get_load_done(core->haru);
+
+        free(ref);
     }
 #endif
 
@@ -175,6 +177,7 @@ void free_core(core_t* core,opt_t opt) {
     if (core->opt.flag & SIGFISH_ACC) {
         VERBOSE("%s","Freeing accelator");
         haru_release(core->haru);
+        free(core->haru);
     }
 #endif
 
@@ -687,6 +690,7 @@ void work_per_single_read(core_t* core,db_t* db, int32_t i){
     dtw_single(core,db,i);
 
 }
+
 #ifdef HAVE_ACC
 
 void dtw_fpga(core_t* core,db_t* db){
