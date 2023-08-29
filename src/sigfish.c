@@ -753,22 +753,30 @@ void dtw_fpga(core_t* core,db_t* db){
 
             free(query_r);
 
-
+            int32_t pos_st_tmp;
+            int32_t pos_end_tmp; 
             db->aln[i].score = ((float)results.score)/32.0;
             db->aln[i].score2 = ((float)results.score)/32.0;
             if (results.position > rlen) {
                 // reverse
-                db->aln[i].pos_st = 2*rlen - results.position;
-                db->aln[i].pos_end = db->aln[i].pos_st + 250;
+                pos_st_tmp = 2*rlen - results.position;
+                pos_end_tmp = db->aln[i].pos_st + 250;
                 db->aln[i].d = '-';
             } else {
                 // forward
-                db->aln[i].pos_end = results.position;
-                db->aln[i].pos_st = results.position - 250;
+                pos_end_tmp = results.position;
+                pos_st_tmp = results.position - 250;
                 db->aln[i].d = '+';
             }
 
+            db->aln[i].pos_st = aln[i].d == '+' ? pos_st_tmp : core->ref->ref_lengths[aln[i].rid] - pos_end_tmp  ;
+            db->aln[i].pos_end = aln[i].d == '+' ? pos_end_tmp : core->ref->ref_lengths[aln[i].rid] - pos_st_tmp  ;
+            
             db->aln[i].rid = 0;
+            db->aln[i].pos_st += core->ref->ref_st_offset[aln[i].rid];
+            db->aln[i].pos_end += core->ref->ref_st_offset[aln[i].rid];
+
+            
             db->aln[i].mapq = 60;
 
             free(aln);
