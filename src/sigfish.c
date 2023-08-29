@@ -131,21 +131,25 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
             exit(EXIT_FAILURE);
         }
 
+        int32_t *ref = NULL;
         int32_t rlen = core->ref->ref_lengths[0];
-        int32_t *ref = (int32_t *)malloc(sizeof(int32_t) * rlen * 2);
-        MALLOC_CHK(ref);
 
         if (core->opt.flag & SIGFISH_RNA) {
+            ref = (int32_t *)malloc(sizeof(int32_t) * rlen );
+            MALLOC_CHK(ref);
             for(int i=0;i<rlen;i++){
                 ref[i] = (int32_t) (core->ref->forward[0][i] * 32);
             }
         } else {
+            ref = (int32_t *)malloc(sizeof(int32_t) * rlen * 2);
+            MALLOC_CHK(ref);
             for(int i=0;i<rlen;i++){
                 ref[i] = (int32_t) (core->ref->forward[0][i] * 32);
                 ref[i+rlen] = (int32_t) (core->ref->reverse[0][i] *32);
             }
         }
         
+        MALLOC_CHK(ref);
 
         // haru_get_load_done(core->haru);
         if (haru_load_reference(core->haru, ref, rlen * 2) == 0) {
