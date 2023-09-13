@@ -133,13 +133,16 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
 
         int32_t *ref = NULL;
         int32_t rlen = core->ref->ref_lengths[0];
-
+        int32_t acc_rlen;
         if (core->opt.flag & SIGFISH_RNA) {
             ref = (int32_t *)malloc(sizeof(int32_t) * rlen );
             MALLOC_CHK(ref);
             for(int i=0;i<rlen;i++){
                 ref[i] = (int32_t) (core->ref->forward[0][i] * 32);
             }
+
+            acc_rlen = rlen;
+
         } else {
             ref = (int32_t *)malloc(sizeof(int32_t) * rlen * 2);
             MALLOC_CHK(ref);
@@ -147,15 +150,19 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
                 ref[i] = (int32_t) (core->ref->forward[0][i] * 32);
                 ref[i+rlen] = (int32_t) (core->ref->reverse[0][i] *32);
             }
+
+            acc_rlen = rlen * 2;
+            
         }
         
         MALLOC_CHK(ref);
 
         // haru_get_load_done(core->haru);
-        if (haru_load_reference(core->haru, ref, rlen * 2) == 0) {
+        if (haru_load_reference(core->haru, ref, acc_rlen) == 0) {
             ERROR("%s","Load reference incomplete\n");
             exit(EXIT_FAILURE);
         }
+
         haru_get_load_done(core->haru);
 
         free(ref);
@@ -664,7 +671,6 @@ void dtw_single(core_t* core,db_t* db, int32_t i) {
 
         free(query);
 
-
         db->aln[i].score = aln[SECONDARY_CAP-1].score;
         db->aln[i].score2 = aln[SECONDARY_CAP-2].score;
         db->aln[i].pos_st = aln[SECONDARY_CAP-1].d == '+' ? aln[SECONDARY_CAP-1].pos_st : core->ref->ref_lengths[aln[SECONDARY_CAP-1].rid] - aln[SECONDARY_CAP-1].pos_end  ;
@@ -730,8 +736,6 @@ void dtw_fpga(core_t* core,db_t* db){
 
             int32_t rlen = core->ref->ref_lengths[0];
 
-
-
             int32_t *query_r = (int32_t *)malloc(sizeof(int32_t)*(qlen+2));
             MALLOC_CHK(query_r);
             query_r[0]=i;
@@ -747,9 +751,14 @@ void dtw_fpga(core_t* core,db_t* db){
                     query[j] = (int32_t) (db->et[i].event[j+start_idx].mean * 32);
                 }
             }
-
+            
             search_result_t results;
-            haru_process_query(core->haru, query_r, qlen+2, &results);
+            if (qlen == 250) {
+                haru_process_query(core->haru, query_r, qlen+2, &results);
+            } else {
+                VERBOSE("Ignored query: %d", i);
+            }
+            
 
             free(query_r);
 
@@ -757,10 +766,11 @@ void dtw_fpga(core_t* core,db_t* db){
             int32_t pos_end_tmp; 
             db->aln[i].score = ((float)results.score)/32.0;
             db->aln[i].score2 = ((float)results.score)/32.0;
-            if (results.position > rlen) {
+
+            if (results.position > rlen && !rna) {
                 // reverse
                 pos_st_tmp = 2*rlen - results.position;
-                pos_end_tmp = db->aln[i].pos_st + 250;
+                pos_end_tmp = pos_st_tmp + 250;
                 db->aln[i].d = '-';
             } else {
                 // forward
@@ -769,14 +779,18 @@ void dtw_fpga(core_t* core,db_t* db){
                 db->aln[i].d = '+';
             }
 
-            db->aln[i].pos_st = aln[i].d == '+' ? pos_st_tmp : core->ref->ref_lengths[aln[i].rid] - pos_end_tmp  ;
-            db->aln[i].pos_end = aln[i].d == '+' ? pos_end_tmp : core->ref->ref_lengths[aln[i].rid] - pos_st_tmp  ;
-            
-            db->aln[i].rid = 0;
-            db->aln[i].pos_st += core->ref->ref_st_offset[aln[i].rid];
-            db->aln[i].pos_end += core->ref->ref_st_offset[aln[i].rid];
+            if (rna) {
+                db->aln[i].pos_st = db->aln[i].d == '+' ? pos_st_tmp : core->ref->ref_lengths[0] - pos_end_tmp  ;
+                db->aln[i].pos_end = db->aln[i].d == '+' ? pos_end_tmp : core->ref->ref_lengths[0] - pos_st_tmp  ;
 
-            
+                db->aln[i].pos_st += core->ref->ref_st_offset[0];
+                db->aln[i].pos_end += core->ref->ref_st_offset[0];            
+            } else {
+                db->aln[i].pos_end = pos_end_tmp;
+                db->aln[i].pos_st = pos_st_tmp;
+            }
+
+            db->aln[i].rid = 0;
             db->aln[i].mapq = 60;
 
             free(aln);
