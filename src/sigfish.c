@@ -875,14 +875,9 @@ void output_db(core_t* core, db_t* db) {
             assert(end_event_idx>=0 && end_event_idx<=db->et[i].n);
             uint64_t start_raw_idx = db->et[i].event[start_event_idx].start; //inclusive
             uint64_t end_raw_idx = db->et[i].event[end_event_idx].start + db->et[i].event[end_event_idx].length; //exclusive
-
             uint64_t query_size =  end_event_idx-start_event_idx;
             float block_len = db->aln[i].pos_end - db->aln[i].pos_st;
             float residue = block_len - db->aln[i].score*block_len/(query_size) ;
-
-            // if(db->aln[i].score>70){
-            //     continue;
-            // }
 
             printf("%s\t",db->slow5_rec[i]->read_id); // read id name
             printf("%ld\t%ld\t%ld\t", db->slow5_rec[i]->len_raw_signal, start_raw_idx, end_raw_idx); // Raw signal length, start and end
