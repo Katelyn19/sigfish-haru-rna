@@ -135,6 +135,8 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
         int32_t rlen = core->ref->ref_lengths[0];
         int32_t acc_rlen;
         if (core->opt.flag & SIGFISH_RNA) {
+            // TODO: concatenate multiple references
+
             ref = (int32_t *)malloc(sizeof(int32_t) * rlen );
             MALLOC_CHK(ref);
             for(int i=0;i<rlen;i++){
@@ -759,8 +761,9 @@ void dtw_fpga(core_t* core,db_t* db){
                 VERBOSE("Ignored query: %d", i);
             }
             
-
             free(query_r);
+
+            // TODO: calculate position relative to de-concatenated reference
 
             int32_t pos_st_tmp;
             int32_t pos_end_tmp; 
@@ -790,6 +793,7 @@ void dtw_fpga(core_t* core,db_t* db){
                 db->aln[i].pos_st = pos_st_tmp;
             }
 
+            // TODO: assign reference id according to concatenation
             db->aln[i].rid = 0;
             db->aln[i].mapq = 60;
 

@@ -10,6 +10,7 @@
 #include "sigfish.h"
 #include "misc.h"
 #include "error.h"
+#include "concat.h"
 
 #ifdef HAVE_EXECINFO_H
     #include <execinfo.h>
@@ -41,6 +42,7 @@ void sig_handler(int sig) {
 
 int dtw_main(int argc, char* argv[]);
 int eval_main(int argc, char* argv[]);
+int concat_main(int argc);
 
 int print_usage(FILE *fp_help){
 
@@ -83,6 +85,9 @@ int main(int argc, char* argv[]){
     }
     else if(strcmp(argv[1],"--help")==0 || strcmp(argv[1],"-h")==0){
         print_usage(stdout);
+    }
+    else if (strcmp(argv[1],"concat")==0){
+        ret = concat_main(0);
     }
     else{
         fprintf(stderr,"[sigfish] Unrecognised command %s\n",argv[1]);
