@@ -216,6 +216,7 @@ typedef struct {
     double event_time;
     double normalise_time;
     double dtw_time;
+    double haru_time;
 
     //stats //set by output_db
     int64_t sum_bytes;
