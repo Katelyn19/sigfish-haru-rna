@@ -126,28 +126,45 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
             exit(EXIT_FAILURE);
         }
 
-        if(core->ref->num_ref>1){
-            ERROR("%s","The FPGA version currently only supports one reference");
+        int8_t rna = core->opt.flag & SIGFISH_RNA;
+        if(core->ref->num_ref>1 && !rna){
+            ERROR("%s","The FPGA version currently only supports one DNA reference");
             exit(EXIT_FAILURE);
         }
 
         int32_t *ref = NULL;
-        int32_t rlen = core->ref->ref_lengths[0];
         int32_t acc_rlen;
+
         if (core->opt.flag & SIGFISH_RNA) {
             // TODO: concatenate multiple references
 
-            ref = (int32_t *)malloc(sizeof(int32_t) * rlen );
-            MALLOC_CHK(ref);
-            for(int i=0;i<rlen;i++){
-                ref[i] = (int32_t) (core->ref->forward[0][i] * 32);
+            int32_t rlen_total = 0;
+
+            for (int i = 0; i < core->ref->num_ref; i++) {
+                rlen_total += core->ref->ref_lengths[i];
             }
 
-            acc_rlen = rlen;
+            INFO("Total Refs: %d, rlen_total: %d", core->ref->num_ref, rlen_total);
+
+            ref = (int32_t *)malloc(sizeof(int32_t) * rlen_total );
+            MALLOC_CHK(ref);
+
+            int ref_i = 0;
+            for (int i = 0; i < core->ref->num_ref; i++) {
+                for (int j = 0; j < core->ref->ref_lengths[i]; j++) {
+                    ref[ref_i] = (int32_t) (core->ref->forward[i][j] * 32);
+
+                    ref_i++;
+                }
+            }
+
+            acc_rlen = rlen_total;
 
         } else {
+            int32_t rlen = core->ref->ref_lengths[0];
             ref = (int32_t *)malloc(sizeof(int32_t) * rlen * 2);
             MALLOC_CHK(ref);
+
             for(int i=0;i<rlen;i++){
                 ref[i] = (int32_t) (core->ref->forward[0][i] * 32);
                 ref[i+rlen] = (int32_t) (core->ref->reverse[0][i] *32);
@@ -764,37 +781,59 @@ void dtw_fpga(core_t* core,db_t* db){
             free(query_r);
 
             // TODO: calculate position relative to de-concatenated reference
+            int curr_pos = 0;
+            int offset_pos = -1;
+            int ref_id = -1;
+            int ref_i = 0;
 
-            int32_t pos_st_tmp;
-            int32_t pos_end_tmp; 
+            while ((ref_i < core->ref->num_ref) && (ref_id < 0)) {
+                curr_pos += core->ref->ref_lengths[ref_i];
+                
+                if (curr_pos > results.position) {
+                    ref_id = ref_i;
+                    offset_pos = curr_pos - core->ref->ref_lengths[ref_i];
+                    INFO("ref_id: %d, ref_length: %d, offset_pos: %d", ref_id, core->ref->ref_lengths[ref_i], offset_pos);
+                }
+
+                ref_i++;
+            }
+
+            if (ref_id < 0) {
+                ERROR("Mapped position %d is out of bounds.", results.position);
+            }
+
+            int32_t pos_end_tmp = (int32_t) (results.position - offset_pos);
+
+            INFO("og_pos: %d, actual_pos: %d", results.position, pos_end_tmp);
+            
             db->aln[i].score = ((float)results.score)/32.0;
             db->aln[i].score2 = ((float)results.score)/32.0;
 
-            if (results.position > rlen && !rna) {
+            int32_t pos_st_tmp;
+            if (pos_end_tmp > rlen && !rna) {
                 // reverse
-                pos_st_tmp = 2*rlen - results.position;
+                pos_st_tmp = 2*rlen - pos_end_tmp;
                 pos_end_tmp = pos_st_tmp + 250;
                 db->aln[i].d = '-';
             } else {
                 // forward
-                pos_end_tmp = results.position;
-                pos_st_tmp = results.position - 250;
+                pos_st_tmp = pos_end_tmp - 250;
                 db->aln[i].d = '+';
             }
 
             if (rna) {
-                db->aln[i].pos_st = db->aln[i].d == '+' ? pos_st_tmp : core->ref->ref_lengths[0] - pos_end_tmp  ;
-                db->aln[i].pos_end = db->aln[i].d == '+' ? pos_end_tmp : core->ref->ref_lengths[0] - pos_st_tmp  ;
+                db->aln[i].pos_st = db->aln[i].d == '+' ? pos_st_tmp : core->ref->ref_lengths[ref_id] - pos_end_tmp  ;
+                db->aln[i].pos_end = db->aln[i].d == '+' ? pos_end_tmp : core->ref->ref_lengths[ref_id] - pos_st_tmp  ;
 
-                db->aln[i].pos_st += core->ref->ref_st_offset[0];
-                db->aln[i].pos_end += core->ref->ref_st_offset[0];            
+                db->aln[i].pos_st += core->ref->ref_st_offset[ref_id];
+                db->aln[i].pos_end += core->ref->ref_st_offset[ref_id];            
             } else {
                 db->aln[i].pos_end = pos_end_tmp;
                 db->aln[i].pos_st = pos_st_tmp;
             }
 
             // TODO: assign reference id according to concatenation
-            db->aln[i].rid = 0;
+            db->aln[i].rid = ref_id;
             db->aln[i].mapq = 60;
 
             free(aln);

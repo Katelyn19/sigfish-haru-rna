@@ -31,15 +31,15 @@ int concat_main(int argc) {
     }
 
     int pos = 5600;
-    int tmp_total = 0;
-    int cumulative = -1;
+    int curr_len = 0;
+    int total_len = -1;
     int ref_id = -1;
     for (int i = 0; i < core->ref->num_ref; i++) {
-        tmp_total += core->ref->ref_lengths[i];
+        curr_len += core->ref->ref_lengths[i];
         
-        if (tmp_total > pos && ref_id < 0) {
+        if (curr_len > pos && ref_id < 0) {
             ref_id = i;
-            cumulative = tmp_total - core->ref->ref_lengths[i];
+            total_len = curr_len - core->ref->ref_lengths[i];
         }
     }
 
@@ -47,7 +47,7 @@ int concat_main(int argc) {
         INFO("%s", "Error");
     }
 
-    int actual_pos = pos - cumulative;
+    int actual_pos = pos - total_len;
 
     INFO("pos: %d, ref: %d, actual pos: %d", pos, ref_id, actual_pos);
 }
