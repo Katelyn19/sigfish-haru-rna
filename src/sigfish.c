@@ -144,8 +144,6 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
                 rlen_total += core->ref->ref_lengths[i];
             }
 
-            INFO("Total Refs: %d, rlen_total: %d", core->ref->num_ref, rlen_total);
-
             ref = (int32_t *)malloc(sizeof(int32_t) * rlen_total );
             MALLOC_CHK(ref);
 
@@ -755,7 +753,7 @@ void dtw_fpga(core_t* core,db_t* db){
 
             int32_t rlen = core->ref->ref_lengths[0];
 
-            int32_t *query_r = (int32_t *)malloc(sizeof(int32_t)*(qlen+2));
+            int32_t *query_r = (int32_t *)malloc(sizeof(int32_t)*(HARU_QLEN +2));
             MALLOC_CHK(query_r);
             query_r[0]=i;
             query_r[1]=0;
@@ -764,47 +762,72 @@ void dtw_fpga(core_t* core,db_t* db){
 
             for(int j=0;j<qlen;j++){
                 if (!(core->opt.flag & SIGFISH_INV) && rna){
+                    // invert query
                     query[qlen-1-j] = (int32_t) (db->et[i].event[j+start_idx].mean * 32);
                 }
                 else{
                     query[j] = (int32_t) (db->et[i].event[j+start_idx].mean * 32);
                 }
             }
-            
-            search_result_t results;
-            if (qlen == 250) {
-                haru_process_query(core->haru, query_r, qlen+2, &results);
-            } else {
-                VERBOSE("Ignored query: %d", i);
+
+            // Pad queries that are too short.
+            if (qlen < HARU_QLEN) {
+                int pad_len = HARU_QLEN - qlen;
+                if (!(core->opt.flag & SIGFISH_INV) && rna) {
+                    for (int j = 0; j < pad_len; j++) {
+                        query[j] = (int32_t) 0;
+                    }
+                } else {
+                    for (int j = 0; j < pad_len; j++) {
+                        query[qlen+j] = (int32_t) 0;
+                    }
+                }
+
+                // VERBOSE("%s", "============================= padding ====================");
+                // VERBOSE("qlen: %d pad_len: %d", qlen, pad_len);
+                // for (int j = 0; j < HARU_QLEN; j++) {
+                //     VERBOSE("query[%d]: %d", j, query[j]);
+                // }
             }
+
+            search_result_t results;
+            haru_process_query(core->haru, query_r, HARU_QLEN+2, &results);
             
             free(query_r);
 
             // TODO: calculate position relative to de-concatenated reference
-            int curr_pos = 0;
+            int curr_pos = 2;
+            int offset_add;
             int offset_pos = -1;
             int ref_id = -1;
             int ref_i = 0;
 
             while ((ref_i < core->ref->num_ref) && (ref_id < 0)) {
-                curr_pos += core->ref->ref_lengths[ref_i];
+                // account for the reverse representation of DNA reference
+                if (!rna) {
+                    offset_add = core->ref->ref_lengths[ref_i]*2;
+                } else {
+                    offset_add = core->ref->ref_lengths[ref_i];
+                }
                 
+                curr_pos += offset_add;
+
                 if (curr_pos > results.position) {
                     ref_id = ref_i;
-                    offset_pos = curr_pos - core->ref->ref_lengths[ref_i];
-                    INFO("ref_id: %d, ref_length: %d, offset_pos: %d", ref_id, core->ref->ref_lengths[ref_i], offset_pos);
+                    offset_pos = curr_pos - offset_add;
+                    // INFO("ref_id: %d, ref_length: %d, offset_pos: %d", ref_id, core->ref->ref_lengths[ref_i], offset_pos);
                 }
 
                 ref_i++;
             }
 
             if (ref_id < 0) {
-                ERROR("Mapped position %d is out of bounds.", results.position);
+                ERROR("Mapped position %d is out of bounds %d", results.position, curr_pos);
             }
 
             int32_t pos_end_tmp = (int32_t) (results.position - offset_pos);
 
-            INFO("og_pos: %d, actual_pos: %d", results.position, pos_end_tmp);
+            // INFO("og_pos: %d, actual_pos: %d", results.position, pos_end_tmp);
             
             db->aln[i].score = ((float)results.score)/32.0;
             db->aln[i].score2 = ((float)results.score)/32.0;
