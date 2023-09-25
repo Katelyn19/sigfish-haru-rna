@@ -10,6 +10,8 @@
 
 #ifdef HAVE_ACC
 #include <haru.h>
+#define HARU_QLEN                   250
+
 #endif
 
 #define SIGFISH_VERSION "0.1.0"
