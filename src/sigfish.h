@@ -40,12 +40,20 @@
 #define SIGFISH_END 0x020 //map the end of the query
 #define SIGFISH_PRF 0x040 //cpu-profile mode
 #define SIGFISH_ACC 0x080 //accelerator enable
+#define SIGFISH_SCA 0X100 //scaling enabled
 
 #define SECONDARY_CAP 5 //maximum number of secondary events to print
 
 #define WORK_STEAL 1 //simple work stealing enabled or not (no work stealing mean no load balancing)
 #define STEAL_THRESH 1 //stealing threshold
 
+/* for testing scaling */
+#define TEST_SCALING
+
+typedef int16_t SIG_DTYPE;
+typedef uint16_t COST_DTYPE;
+#define COST_DTYPE_MAX UINT16_MAX
+#define SCALING 32.0
 
 //linear segment alignment record
 #define LSAR_TJUMP 'J'      //jump in the target
@@ -96,6 +104,12 @@ typedef struct {
 
     float **forward;
     float **reverse;
+
+#ifdef TEST_SCALING
+    SIG_DTYPE **forward_scaled;
+    SIG_DTYPE **reverse_scaled;
+#endif
+
 } refsynth_t;
 
 

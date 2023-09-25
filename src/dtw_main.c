@@ -38,6 +38,7 @@ static struct option long_options[] = {
     {"from-end", no_argument, 0, 0},               //20 Map the end portion of the query
     {"profile-cpu",required_argument, 0, 0},       //21 perform section by section (used for profiling - for CPU only)
     {"accel",required_argument, 0, 0},             //22 perform section by section (used for profiling - for CPU only)
+    {"scaling", required_argument, 0, 0},          //23 perform scaling (for CPU only)
     {0, 0, 0, 0}};
 
 
@@ -81,6 +82,9 @@ static inline void print_help_msg(FILE *fp_help, opt_t opt){
     fprintf(fp_help,"   --from-end                 Map the end portion of the query instead of the beginning\n");
 #ifdef HAVE_ACC
     fprintf(fp_help,"   --accel=yes|no             Running on accelerator [%s]\n",(opt.flag&SIGFISH_ACC?"yes":"no"));
+#endif
+#ifdef TEST_SCALING
+    fprintf(fp_help,"   --scaling=yes|no           perform scaling (for CPU only)\n");
 #endif
 
 }
@@ -205,6 +209,12 @@ int dtw_main(int argc, char* argv[]) {
             yes_or_no(&opt, SIGFISH_ACC, longindex, optarg, 1);
         #else
             WARNING("%s", "--accel has no effect when compiled for the CPU");
+        #endif
+        } else if(c == 0 && longindex == 23){ //scaling
+        #ifdef TEST_SCALING
+            yes_or_no(&opt, SIGFISH_SCA, longindex, optarg, 1);
+        #else
+            WARNING("%s", "--scaling has no effect when not compiled for testing scaling.");
         #endif
         }
 

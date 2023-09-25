@@ -24,6 +24,11 @@ OBJ = $(BUILD_DIR)/main.o \
 	  $(BUILD_DIR)/eval.o \
 	  $(BUILD_DIR)/concat.o \
 
+ifdef test_scaling
+	OBJ +=	$(BUILD_DIR)/haru.o $(BUILD_DIR)/axi_dma.o $(BUILD_DIR)/dtw_accel.o
+	CPPFLAGS += -D TEST_SCALING=1 -I HARU/driver/include/
+endif
+
 PREFIX = /usr/local
 VERSION = `git describe --tags`
 

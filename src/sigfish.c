@@ -96,6 +96,41 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
     core->ref = gen_ref(fastafile,core->model,kmer_size,opt.flag, opt.query_size);
     core->opt = opt;
 
+#ifdef TEST_SCALING
+    int8_t rna = core->opt.flag & SIGFISH_RNA;
+    /* init scaled reference */
+    core->ref->forward_scaled = (SIG_DTYPE**)malloc(sizeof(SIG_DTYPE*) * core->ref->num_ref);
+    MALLOC_CHK(core->ref->forward_scaled);
+
+    if (!rna) {
+        core->ref->reverse_scaled = (SIG_DTYPE**)malloc(sizeof(SIG_DTYPE*) * core->ref->num_ref);
+        MALLOC_CHK(core->ref->reverse_scaled);
+
+        for (int i = 0; i < core->ref->num_ref; i++) {
+            core->ref->forward_scaled[i]= (SIG_DTYPE*) malloc(sizeof(SIG_DTYPE) * core->ref->ref_lengths[i]);
+            MALLOC_CHK(core->ref->forward_scaled[i]);
+
+            core->ref->reverse_scaled[i]= (SIG_DTYPE*) malloc(sizeof(SIG_DTYPE) * core->ref->ref_lengths[i]);
+            MALLOC_CHK(core->ref->reverse_scaled[i]);
+
+            for (int j = 0; j < core->ref->ref_lengths[i]; j++) {
+                core->ref->forward_scaled[i][j] = (SIG_DTYPE) (core->ref->forward[i][j] * SCALING);
+                core->ref->reverse_scaled[i][j] = (SIG_DTYPE) (core->ref->reverse[i][j] * SCALING);
+            }
+        }
+    } else {
+        for (int i = 0; i < core->ref->num_ref; i++) {
+            core->ref->forward_scaled[i]= (SIG_DTYPE*) malloc(sizeof(SIG_DTYPE) * core->ref->ref_lengths[i]);
+            MALLOC_CHK(core->ref->forward_scaled[i]);
+
+            for (int j = 0; j < core->ref->ref_lengths[i]; j++) {
+                core->ref->forward_scaled[i][j] = (SIG_DTYPE) (core->ref->forward[i][j] * SCALING);
+            }
+        }
+    }
+    
+#endif
+
     //realtime0
     core->realtime0=realtime0;
 
@@ -207,6 +242,24 @@ void free_core(core_t* core,opt_t opt) {
         haru_release(core->haru);
         free(core->haru);
     }
+#endif
+
+#ifdef TEST_SCALING
+    int8_t rna = core->opt.flag & SIGFISH_RNA;
+
+    for (int i = 0; i < core->ref->num_ref; i++) {
+        free(core->ref->forward_scaled[i]);
+        
+    }
+
+    if (!rna) {
+        for (int i = 0; i < core->ref->num_ref; i++) {
+            free(core->ref->reverse_scaled[i]);
+        }
+    }
+
+    free(core->ref->forward_scaled);
+    free(core->ref->reverse_scaled);
 #endif
 
     free_ref(core->ref);
@@ -547,6 +600,46 @@ void update_aln(aln_t* aln, float score, int32_t rid, int32_t pos, char d, float
 
 }
 
+void update_aln_DS(aln_t* aln, COST_DTYPE score, int32_t rid, int32_t pos, char d, COST_DTYPE *cost, int32_t qlen, int32_t rlen){
+    int l=0;
+
+    float score_f = ((float)score)/SCALING;
+    for(; l<SECONDARY_CAP; l++){
+        if (score_f > aln[l].score){
+            break;
+        } else {
+            continue;
+        }
+    }
+
+    if(l!=0){
+        for(int m=0;m<l-1;m++){
+            aln[m] = aln[m+1];
+        }
+        aln[l-1].score = score_f;
+        aln[l-1].pos_end = pos;
+        aln[l-1].rid = rid;
+        aln[l-1].d = d;
+
+        Path p;
+        if(subsequence_path_DS(cost, qlen, rlen, pos, &p)){
+            if(p.k<=0){
+                fprintf(stderr,"Could not find path as size is 0\n");
+                aln[l-1].pos_st = -1;
+            }else{
+                aln[l-1].pos_st = p.py[0];
+                assert(p.py[p.k-1] == pos);
+                //fprintf(stderr,"%d %d %d %d\n",qlen,rlen,pos,aln[l-1].pos_st);
+            }
+            free(p.px);
+            free(p.py);
+        }
+        else {
+            fprintf(stderr,"Could not find path. %d %d %d\n",qlen,rlen,pos);
+            aln[l-1].pos_st = -1;
+        }
+    }
+}
 
 void dtw_single(core_t* core,db_t* db, int32_t i) {
 
@@ -709,6 +802,166 @@ void dtw_single(core_t* core,db_t* db, int32_t i) {
 
 }
 
+#ifdef TEST_SCALING
+void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
+    if(db->slow5_rec[i]->len_raw_signal>0 && db->et[i].n>0){
+
+        aln_t *aln=init_aln();
+
+        int64_t start_idx = db->qstart[i];
+        int64_t end_idx = db->qend[i];
+        //int64_t n =  db->et[i].n;
+
+        int8_t from_sig_end= core->opt.flag & SIGFISH_END;
+        int32_t qlen;
+
+        if(!from_sig_end){ //map query start
+            // start_idx =  core->opt.prefix_size;
+            // end_idx = start_idx+core->opt.query_size;
+            //qlen = end_idx > n ? n -start_idx : core->opt.query_size;
+            qlen = end_idx - start_idx;
+        }
+        else{  //map query end
+            // start_idx = n - core->opt.prefix_size - core->opt.query_size;
+            // end_idx = n - core->opt.prefix_size;
+            //qlen = start_idx < 0 ? end_idx : core->opt.query_size;
+            qlen = end_idx - start_idx;
+            assert(qlen>=0);
+        }
+
+        int8_t rna = core->opt.flag & SIGFISH_RNA;
+
+        // float *query = (float *)malloc(sizeof(float)*qlen);
+        SIG_DTYPE *query = (SIG_DTYPE *)malloc(sizeof(SIG_DTYPE)*(qlen));
+        MALLOC_CHK(query);
+
+        for(int j=0;j<qlen;j++){
+            if (!(core->opt.flag & SIGFISH_INV) && rna){
+                // query[qlen-1-j] = db->et[i].event[j+start_idx].mean;
+                query[qlen-1-j] = (SIG_DTYPE) (db->et[i].event[j+start_idx].mean * SCALING);
+            }
+            else{
+                // query[j] = db->et[i].event[j+start_idx].mean;
+                query[j] = (SIG_DTYPE) (db->et[i].event[j+start_idx].mean * SCALING);
+            }
+        }
+
+        COST_DTYPE my_min_score = COST_DTYPE_MAX;
+
+        //fprintf(stderr,"numref %d\n",core->ref->num_ref)    ;
+        for(int j=0;j<core->ref->num_ref;j++){
+
+            int32_t rlen =core->ref->ref_lengths[j];
+            // float *cost = (float *)malloc(sizeof(float) * qlen * rlen);
+            COST_DTYPE *cost = (COST_DTYPE *)malloc(sizeof(COST_DTYPE)*(qlen*rlen));
+            MALLOC_CHK(cost);
+
+            //fprintf(stderr,"%d,%d\n",qlen,rlen);
+
+            if(!(core->opt.flag & SIGFISH_DTW)){
+                // fprintf(stderr,"query: ");
+                // for(int k=0;k<qlen;k++){
+                //     fprintf(stderr,"%f,",query[k]);
+                // }
+                //                 fprintf(stderr,"\n");
+                // fprintf(stderr,"Ref: ");
+
+                // for(int k=0;k<rlen;k++){
+                //     fprintf(stderr,"%f,",core->ref->forward[j][k]);
+                // }
+                // fprintf(stderr,"\n\n");
+                // subsequence(query, core->ref->forward[j], qlen , rlen, cost);
+                _hw_sdtw(query, core->ref->forward_scaled[j], qlen, rlen, cost);
+                for(int k=(qlen-1)*rlen; k< qlen*rlen; k+=qlen){
+                    // float min_score = INFINITY;
+                    COST_DTYPE min_score = INFINITY;
+                    int32_t min_pos = -1;
+                    for(int m=0;m<qlen && k+m<qlen*rlen;m++){
+                        if(cost[k+m] < min_score){
+                            min_score = cost[k+m];
+                            min_pos = m+k;
+                        }
+                    }
+                    // update_aln(aln, min_score, j, min_pos-(qlen-1)*rlen, '+', cost, qlen, rlen);
+                    update_aln_DS(aln, min_score, j, min_pos-(qlen-1)*rlen, '+', cost, qlen, rlen);
+
+                }
+
+                // for(int k=(qlen-1)*rlen; k< qlen*rlen; k++){
+                //     update_aln(aln, cost[k], j, k-(qlen-1)*rlen, '+',);
+                //     // if(cost[k]<score){
+                //     //     score2=score;
+                //     //     score = cost[k];
+                //     //     pos = k-(qlen-1)*rlen;
+                //     //     rid = j;
+                //     //     d = '+';
+                //     // }
+                // }
+            }
+
+            if (!rna) {
+                // subsequence(query, core->ref->reverse[j], qlen , rlen, cost);
+                _hw_sdtw(query, core->ref->reverse_scaled[j], qlen, rlen, cost);
+
+                for(int k=(qlen-1)*rlen; k< qlen*rlen; k+=qlen){
+                    // float min_score = INFINITY;
+                    COST_DTYPE min_score = INFINITY;
+                    int32_t min_pos = -1;
+                    for(int m=0; m<qlen && k+m<qlen*rlen; m++){
+                        if(cost[k+m] < min_score){
+                            min_score = cost[k+m];
+                            min_pos = m+k;
+                        }
+                    }
+                    // update_aln(aln, min_score, j, min_pos-(qlen-1)*rlen, '-', cost, qlen, rlen);
+                    update_aln_DS(aln, min_score, j, min_pos-(qlen-1)*rlen, '-', cost, qlen, rlen);
+                }
+
+                // for(int k=(qlen-1)*rlen; k< qlen*rlen; k++){
+                //     update_aln(aln, cost[k], j, k-(qlen-1)*rlen, '-');
+                //     // if(cost[k]<score){
+                //     //     score2=score;
+                //     //     score = cost[k];
+                //     //     pos = k-(qlen-1)*rlen;
+                //     //     rid = j;
+                //     //     d = '-';
+                //     // }
+                // }
+            }
+
+            free(cost);
+
+        }
+
+        free(query);
+
+        db->aln[i].score = aln[SECONDARY_CAP-1].score;
+        db->aln[i].score2 = aln[SECONDARY_CAP-2].score;
+        db->aln[i].pos_st = aln[SECONDARY_CAP-1].d == '+' ? aln[SECONDARY_CAP-1].pos_st : core->ref->ref_lengths[aln[SECONDARY_CAP-1].rid] - aln[SECONDARY_CAP-1].pos_end  ;
+        db->aln[i].pos_end = aln[SECONDARY_CAP-1].d == '+' ? aln[SECONDARY_CAP-1].pos_end : core->ref->ref_lengths[aln[SECONDARY_CAP-1].rid] - aln[SECONDARY_CAP-1].pos_st  ;
+
+        db->aln[i].pos_st += core->ref->ref_st_offset[aln[SECONDARY_CAP-1].rid];
+        db->aln[i].pos_end += core->ref->ref_st_offset[aln[SECONDARY_CAP-1].rid];
+        db->aln[i].rid = aln[SECONDARY_CAP-1].rid;
+        db->aln[i].d = aln[SECONDARY_CAP-1].d;
+
+        int mapq=(int)round(500*(db->aln[i].score2-db->aln[i].score)/db->aln[i].score);
+        if(mapq>60){
+            mapq=60;
+        }
+        db->aln[i].mapq = mapq;
+
+        // db->aln[i].score = ((float)my_min_score)/SCALING;
+        // db->aln[i].score2 = ((float)my_min_score)/SCALING;
+        // db->aln[i].mapq = 60;
+
+        free(aln);
+
+    }
+}
+
+#endif
+
 
 void work_per_single_read(core_t* core,db_t* db, int32_t i){
     parse_single(core,db,i);
@@ -833,7 +1086,7 @@ void dtw_fpga(core_t* core,db_t* db){
             db->aln[i].score2 = ((float)results.score)/32.0;
 
             int32_t pos_st_tmp;
-            if (pos_end_tmp > rlen && !rna) {
+            if (pos_end_tmp > rlen) {
                 // reverse
                 pos_st_tmp = 2*rlen - pos_end_tmp;
                 pos_end_tmp = pos_st_tmp + 250;
@@ -877,7 +1130,14 @@ void align_db(core_t* core, db_t* db) {
     }
 #endif
 
-    if (!(core->opt.flag & SIGFISH_ACC)) {
+#ifdef TEST_SCALING
+    if (core->opt.flag & SIGFISH_SCA) {
+        VERBOSE("%s","Aligning reads with scaling");
+        work_db(core,db,dtw_single_scaling);
+    }
+#endif
+
+    if (!(core->opt.flag & SIGFISH_ACC) && !(core->opt.flag & SIGFISH_SCA)) {
         //fprintf(stderr, "cpu\n");
         work_db(core,db,dtw_single);
     }
@@ -886,7 +1146,7 @@ void align_db(core_t* core, db_t* db) {
 void process_db(core_t* core,db_t* db){
     double proc_start = realtime();
     
-    if(core->opt.flag & SIGFISH_PRF || core->opt.flag & SIGFISH_ACC){
+    if(core->opt.flag & SIGFISH_PRF || core->opt.flag & SIGFISH_ACC || core->opt.flag & SIGFISH_SCA){
         double a = realtime();
         work_db(core,db,parse_single);
         double b = realtime();
