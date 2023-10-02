@@ -216,7 +216,14 @@ typedef struct {
     double event_time;
     double normalise_time;
     double dtw_time;
-    double haru_time;
+
+    // event profiling
+    double trim_and_segment_raw_time;
+    double detect_events_time;
+    double compute_sum_sumsq;
+    double compute_tstat;
+    double short_long_peak_detector;
+    double create_events;
 
     //stats //set by output_db
     int64_t sum_bytes;

@@ -107,6 +107,14 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
     core->normalise_time=0;
     core->dtw_time=0;
 
+    // event time
+    core->trim_and_segment_raw_time=0;
+    core->detect_events_time=0;
+    core->compute_sum_sumsq=0;
+    core->compute_tstat=0;
+    core->short_long_peak_detector=0;
+    core->create_events=0;
+
     core->sum_bytes=0;
     core->total_reads=0; //total number mapped entries in the bam file (after filtering based on flags, mapq etc)
 
@@ -333,7 +341,7 @@ void event_single(core_t* core,db_t* db, int32_t i) {
         if (core->opt.flag & SIGFISH_RNA){
             rna=1;
         }
-        db->et[i] = getevents(nsample, db->current_signal[i], rna);
+        db->et[i] = getevents(nsample, db->current_signal[i], rna, core);
 
 
         //get the scalings
@@ -790,17 +798,16 @@ void dtw_fpga(core_t* core,db_t* db){
                 // }
             }
 
+            // Process with HARU
             search_result_t results;
             
-            double haru_start = realtime();
             haru_process_query(core->haru, query_r, HARU_QLEN+2, &results);
-            core->haru_time = realtime() - haru_start;
 
             free(query_r);
 
-            // TODO: calculate position relative to de-concatenated reference
+            // Find the mapped reference number and relative position
             int curr_pos = 2;
-            int offset_add;
+            int next_pos;
             int offset_pos = -1;
             int ref_id = -1;
             int ref_i = 0;
@@ -808,18 +815,18 @@ void dtw_fpga(core_t* core,db_t* db){
             while ((ref_i < core->ref->num_ref) && (ref_id < 0)) {
                 // account for the reverse representation of DNA reference
                 if (!rna) {
-                    offset_add = core->ref->ref_lengths[ref_i]*2;
+                    next_pos = curr_pos + core->ref->ref_lengths[ref_i]*2;
                 } else {
-                    offset_add = core->ref->ref_lengths[ref_i];
+                    next_pos = curr_pos +core->ref->ref_lengths[ref_i];
                 }
                 
-                curr_pos += offset_add;
-
-                if (curr_pos > results.position) {
+                if (next_pos > results.position) {
                     ref_id = ref_i;
-                    offset_pos = curr_pos - offset_add;
+                    offset_pos = curr_pos;
                     // INFO("ref_id: %d, ref_length: %d, offset_pos: %d", ref_id, core->ref->ref_lengths[ref_i], offset_pos);
                 }
+
+                curr_pos = next_pos;
 
                 ref_i++;
             }

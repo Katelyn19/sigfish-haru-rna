@@ -308,9 +308,14 @@ int dtw_main(int argc, char* argv[]) {
     if((core->opt.flag&SIGFISH_PRF)|| core->opt.flag & SIGFISH_ACC){
             fprintf(stderr, "\n[%s]     - Parse time: %.3f sec",__func__, core->parse_time);
             fprintf(stderr, "\n[%s]     - Events time: %.3f sec",__func__, core->event_time);
+            fprintf(stderr, "\n[%s]         - trim_and_segment_raw time: %.3f sec",__func__, core->trim_and_segment_raw_time);
+            fprintf(stderr, "\n[%s]         - detect_events time: %.3f sec",__func__, core->detect_events_time);
+            fprintf(stderr, "\n[%s]         - compute_sum_sumsq time: %.3f sec",__func__, core->compute_sum_sumsq);
+            fprintf(stderr, "\n[%s]         - compute_tstat time: %.3f sec",__func__, core->compute_tstat);
+            fprintf(stderr, "\n[%s]         - short_long_peak_detector time: %.3f sec",__func__, core->short_long_peak_detector);
+            fprintf(stderr, "\n[%s]         - create_events time: %.3f sec",__func__, core->create_events);
             fprintf(stderr, "\n[%s]     - Normalise time: %.3f sec",__func__, core->normalise_time);
             fprintf(stderr, "\n[%s]     - DTW time: %.3f sec",__func__, core->dtw_time);
-            fprintf(stderr, "\n[%s]     - Haru time: %.3f sec",__func__, core->haru_time);
     }
 
     fprintf(stderr, "\n[%s] Data output time: %.3f sec", __func__,core->output_time);

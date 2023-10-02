@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <math.h>
 #include "error.h"
+#include "sigfish.h"
 
 void* pthread_single(void* voidargs);
 void pthread_db(core_t* core, db_t* db, void (*func)(core_t*,db_t*,int));
@@ -21,7 +22,7 @@ void pthread_db(core_t* core, db_t* db, void (*func)(core_t*,db_t*,int));
 uint32_t read_model(model_t* model, const char* file, uint32_t type);
 uint32_t set_model(model_t* model, uint32_t model_id);
 
-event_table getevents(size_t nsample, float* rawptr, int8_t rna);
+event_table getevents(size_t nsample, float* rawptr, int8_t rna, core_t* core);
 
 refsynth_t *gen_ref(const char *genome, model_t *pore_model, uint32_t kmer_size, uint32_t rna, int32_t query_size);
 void free_ref(refsynth_t *ref);

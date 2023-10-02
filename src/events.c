@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include "error.h"
 #include "sigfish.h"
-
+#include "misc.h"
 
 #ifndef DISABLE_KSORT
 #include "ksort.h"
@@ -507,15 +507,20 @@ event_table create_events(size_t const* peaks, double const* sums,
     return et;
 }
 
-event_table detect_events(raw_table const rt, detector_param const edparam) {
+event_table detect_events(raw_table const rt, detector_param const edparam, core_t* core) {
     event_table et = {0};
 
     double* sums = (double*)calloc(rt.n + 1, sizeof(double));
     double* sumsqs = (double*)calloc(rt.n + 1, sizeof(double));
 
+    double start = realtime();
     compute_sum_sumsq(rt.raw, sums, sumsqs, rt.n);
+    core->compute_sum_sumsq += realtime() - start;
+
+    start = realtime();
     float* tstat1 = compute_tstat(sums, sumsqs, rt.n, edparam.window_length1);
     float* tstat2 = compute_tstat(sums, sumsqs, rt.n, edparam.window_length2);
+    core->compute_tstat += realtime() - start;
 
     Detector short_detector = {.DEF_PEAK_POS = -1,
                                .DEF_PEAK_VAL = FLT_MAX,
@@ -539,10 +544,14 @@ event_table detect_events(raw_table const rt, detector_param const edparam) {
                               .peak_value = FLT_MAX,
                               .valid_peak = false};
 
+    start = realtime();
     size_t* peaks = short_long_peak_detector(&short_detector, &long_detector,
                                              edparam.peak_height);
+    core->short_long_peak_detector += realtime() - start;
 
+    start = realtime();
     et = create_events(peaks, sums, sumsqs, rt.n);
+    core->create_events += realtime() - start;
 
     free(peaks);
     free(tstat2);
@@ -554,7 +563,7 @@ event_table detect_events(raw_table const rt, detector_param const edparam) {
 }
 
 // interface to scrappie functions
-event_table getevents(size_t nsample, float* rawptr, int8_t rna) {
+event_table getevents(size_t nsample, float* rawptr, int8_t rna, core_t* core) {
     event_table et;
     raw_table rt = (raw_table){nsample, 0, nsample, rawptr};
 
@@ -564,14 +573,19 @@ event_table getevents(size_t nsample, float* rawptr, int8_t rna) {
     int trim_end = 10;
     int varseg_chunk = 100;
     float varseg_thresh = 0.0;
+
+    double start = realtime();
     trim_and_segment_raw(rt, trim_start, trim_end, varseg_chunk, varseg_thresh);
+    core->trim_and_segment_raw_time += realtime() - start;
 
     const detector_param* ed_params = &event_detection_defaults; // for dna
     if(rna){
         ed_params = &event_detection_rna; //rna
     }
 
-    et = detect_events(rt, *ed_params);
+    start = realtime();
+    et = detect_events(rt, *ed_params, core);
+    core->detect_events_time += realtime() - start;
 
     return et;
 }
