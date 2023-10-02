@@ -753,13 +753,14 @@ void dtw_fpga(core_t* core,db_t* db){
 
             int32_t rlen = core->ref->ref_lengths[0];
 
-            int32_t *query_r = (int32_t *)malloc(sizeof(int32_t)*(HARU_QLEN +2));
+            int32_t *query_r = (int32_t *)malloc(sizeof(int32_t)*(HARU_QLEN + 2));
             MALLOC_CHK(query_r);
             query_r[0]=i;
             query_r[1]=0;
 
             int32_t *query = &query_r[2];
 
+            // load query
             for(int j=0;j<qlen;j++){
                 if (!(core->opt.flag & SIGFISH_INV) && rna){
                     // invert query
@@ -769,7 +770,7 @@ void dtw_fpga(core_t* core,db_t* db){
                     query[j] = (int32_t) (db->et[i].event[j+start_idx].mean * 32);
                 }
             }
-
+            
             // Pad queries that are too short.
             if (qlen < HARU_QLEN) {
                 int pad_len = HARU_QLEN - qlen;
@@ -790,6 +791,17 @@ void dtw_fpga(core_t* core,db_t* db){
                 // }
             }
 
+            // // add buffer to prevent mapping over concatenation
+            // if (!(core->opt.flag & SIGFISH_INV) && rna) {
+            //     for (int j = 0; j < 10; j++) {
+            //         query[j] = (int32_t) -INFINITY;
+            //     }
+            // } else {
+            //     for (int j = 0; j < 10; j++) {
+            //         query[HARU_QLEN + j] = (int32_t) -INFINITY;
+            //     }
+            // }
+
             search_result_t results;
             
             double haru_start = realtime();
@@ -797,9 +809,9 @@ void dtw_fpga(core_t* core,db_t* db){
             core->haru_time = realtime() - haru_start;
 
             free(query_r);
-
+            
             // TODO: calculate position relative to de-concatenated reference
-            int curr_pos = 2;
+            int curr_pos = 1;
             int offset_add;
             int offset_pos = -1;
             int ref_id = -1;
@@ -808,9 +820,9 @@ void dtw_fpga(core_t* core,db_t* db){
             while ((ref_i < core->ref->num_ref) && (ref_id < 0)) {
                 // account for the reverse representation of DNA reference
                 if (!rna) {
-                    offset_add = core->ref->ref_lengths[ref_i]*2;
+                    offset_add = core->ref->ref_lengths[ref_i]*2 + 10;
                 } else {
-                    offset_add = core->ref->ref_lengths[ref_i];
+                    offset_add = core->ref->ref_lengths[ref_i] + 10;
                 }
                 
                 curr_pos += offset_add;
