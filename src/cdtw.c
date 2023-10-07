@@ -236,10 +236,18 @@ COST_DTYPE hw_pe(SIG_DTYPE x, SIG_DTYPE y, COST_DTYPE n, COST_DTYPE m, COST_DTYP
     COST_DTYPE min = n;
     if (m < min) min = m;
     if (nw < min) min = nw;
-
     COST_DTYPE cost;
-    if (x > y) cost = (COST_DTYPE) (x - y);
-    else cost = (COST_DTYPE) (y - x);
+    if (x > y) {
+      cost = (COST_DTYPE) (x - y);
+      if (cost != (x - y)) {
+        fprintf(stderr, "overflow occured in PE\n");
+      }
+    } else {
+      cost = (COST_DTYPE) (y - x);
+      if (cost != (y - x)) {
+        fprintf(stderr, "overflow occured in PE\n");
+      }
+    }
 
     return cost + min;
 }
