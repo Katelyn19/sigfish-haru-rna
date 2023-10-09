@@ -128,6 +128,43 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
             }
         }
     }
+
+    /* init concatenated reference */
+    if (rna) {
+        ///////// concatenate references ///////////////
+        int32_t rlen = ((core->ref->num_ref) * (REF_BUFFER_LEN + 1));
+        for (int j = 0; j < core->ref->num_ref; j++) {
+            rlen += core->ref->ref_lengths[j];
+        }
+        core->ref->refs_concated  = (SIG_DTYPE *)malloc(sizeof(SIG_DTYPE) * rlen );
+        MALLOC_CHK(core->ref->refs_concated);
+
+        core->ref->rlen_total = rlen;
+
+        int ref_i = 0;
+        SIG_DTYPE buffer_val;
+        for (int j = 0; j < core->ref->num_ref; j++) {
+            for (int k = 0; k < core->ref->ref_lengths[j]; k++) {
+                core->ref->refs_concated[ref_i] = (SIG_DTYPE) (core->ref->forward[j][k] * SCALING);
+                ref_i++;
+            }
+
+            if (core->ref->refs_concated[ref_i-1] < 0) {
+                buffer_val = COST_SIG_DTYPE_MAX;
+            } else {
+                buffer_val = -COST_SIG_DTYPE_MAX;
+            }
+
+            for (int l = 0; l < REF_BUFFER_LEN; l++) {
+                core->ref->refs_concated[ref_i+l] = buffer_val;
+                ref_i++;
+            }
+        }
+
+        INFO("rlen: %d", rlen);
+
+        /////////////////////////////////////////////////
+    }
     
 #endif
 
@@ -260,6 +297,8 @@ void free_core(core_t* core,opt_t opt) {
 
     free(core->ref->forward_scaled);
     free(core->ref->reverse_scaled);
+
+    free(core->ref->refs_concated);
 #endif
 
     free_ref(core->ref);
@@ -852,23 +891,7 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
         // for(int j=0;j<core->ref->num_ref;j++){
             // int32_t rlen =core->ref->ref_lengths[j];
 
-        ///////// concatenate references ///////////////
-        int32_t rlen = 0;
-        for (int j = 0; j < core->ref->num_ref; j++) {
-            rlen += core->ref->ref_lengths[j];
-        }
-
-        SIG_DTYPE *ref = (SIG_DTYPE *)malloc(sizeof(SIG_DTYPE) * rlen );
-        MALLOC_CHK(ref);
-
-        int conc_ref_i = 0;
-        for (int j = 0; j < core->ref->num_ref; j++) {
-            for (int k = 0; k < core->ref->ref_lengths[j]; k++) {
-                ref[conc_ref_i] = (SIG_DTYPE) (core->ref->forward[j][k] * SCALING);
-                conc_ref_i++;
-            }
-        }
-        /////////////////////////////////////////////////
+        int32_t rlen = core->ref->rlen_total;
 
         // float *cost = (float *)malloc(sizeof(float) * qlen * rlen);
         COST_DTYPE *cost = (COST_DTYPE *)malloc(sizeof(COST_DTYPE)*(qlen*rlen));
@@ -889,7 +912,7 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
             // }
             // fprintf(stderr,"\n\n");
             // subsequence(query, core->ref->forward[j], qlen , rlen, cost);
-            _hw_sdtw(query, ref, qlen, rlen, cost);
+            _hw_sdtw(query, core->ref->refs_concated, qlen, rlen, cost);
             for(int k=(qlen-1)*rlen; k< qlen*rlen; k+=qlen){
                 // float min_score = INFINITY;
                 COST_DTYPE min_score = INFINITY;
@@ -949,8 +972,6 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
         }
 
         free(cost);
-        free(ref);
-
         free(query);
 
         ///////////// calculate actual pos ///////////////    
@@ -967,7 +988,7 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
             if (!rna) {
                 offset_add = core->ref->ref_lengths[ref_i]*2;
             } else {
-                offset_add = core->ref->ref_lengths[ref_i];
+                offset_add = core->ref->ref_lengths[ref_i] + REF_BUFFER_LEN;
             }
             
             curr_pos += offset_add;

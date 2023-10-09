@@ -60,6 +60,10 @@ typedef uint16_t COST_DTYPE;
 // #define COST_DTYPE_MAX UINT16_MAX
 // #define SCALING 128.0
 
+/* for concatenation */
+#define REF_BUFFER_LEN 10
+#define COST_SIG_DTYPE_MAX INT16_MAX
+
 //linear segment alignment record
 #define LSAR_TJUMP 'J'      //jump in the target
 #define LSAR_QJUMP 'j'      //jump in the query
@@ -113,6 +117,9 @@ typedef struct {
 #ifdef TEST_SCALING
     SIG_DTYPE **forward_scaled;
     SIG_DTYPE **reverse_scaled;
+
+    SIG_DTYPE *refs_concated;
+    int32_t rlen_total;
 #endif
 
 } refsynth_t;
