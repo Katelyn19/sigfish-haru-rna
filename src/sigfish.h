@@ -28,6 +28,10 @@
 #define MODEL_ID_DNA_NUCLEOTIDE 1
 #define MODEL_ID_RNA_NUCLEOTIDE 2
 
+// Concatenation Buffers
+#define REFERENCE_BUFFER_LENGTH 30
+#define SIGNAL_DTYPE_MAX INT32_MAX
+
 /*******************************************************
  * flags related to the user specified options (opt_t) *
  *******************************************************/

@@ -136,9 +136,8 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
         int32_t acc_rlen;
 
         if (core->opt.flag & SIGFISH_RNA) {
-            // TODO: concatenate multiple references
-
-            int32_t rlen_total = 0;
+            // allocate space for concatenated references
+            int32_t rlen_total = (core->ref->num_ref) * REFERENCE_BUFFER_LENGTH;
 
             for (int i = 0; i < core->ref->num_ref; i++) {
                 rlen_total += core->ref->ref_lengths[i];
@@ -147,11 +146,23 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
             ref = (int32_t *)malloc(sizeof(int32_t) * rlen_total );
             MALLOC_CHK(ref);
 
+            // copy reference signals with buffers in between
             int ref_i = 0;
+            int32_t buffer_val;
             for (int i = 0; i < core->ref->num_ref; i++) {
                 for (int j = 0; j < core->ref->ref_lengths[i]; j++) {
                     ref[ref_i] = (int32_t) (core->ref->forward[i][j] * 32);
+                    ref_i++;
+                }
 
+                if (ref[ref_i-1] < 0) {
+                    buffer_val = SIGNAL_DTYPE_MAX;
+                } else {
+                    buffer_val = -SIGNAL_DTYPE_MAX;
+                }
+
+                for (int j = 0; j < REFERENCE_BUFFER_LENGTH; j++) {
+                    ref[ref_i+j] = buffer_val;
                     ref_i++;
                 }
             }
@@ -785,19 +796,7 @@ void dtw_fpga(core_t* core,db_t* db){
                 }
             }
 
-            // // add buffer to prevent mapping over concatenation
-            // if (!(core->opt.flag & SIGFISH_INV) && rna) {
-            //     for (int j = 0; j < 10; j++) {
-            //         query[j] = (int32_t) -INFINITY;
-            //     }
-            // } else {
-            //     for (int j = 0; j < 10; j++) {
-            //         query[HARU_QLEN + j] = (int32_t) -INFINITY;
-            //     }
-            // }
-
             search_result_t results;
-            
             double haru_start = realtime();
             haru_process_query(core->haru, query_r, HARU_QLEN+2, &results);
             core->haru_time += realtime() - haru_start;
@@ -805,7 +804,7 @@ void dtw_fpga(core_t* core,db_t* db){
             free(query_r);
             
             // TODO: calculate position relative to de-concatenated reference
-            int curr_pos = 1;
+            int curr_pos = 2;
             int offset_add;
             int offset_pos = -1;
             int ref_id = -1;
@@ -814,9 +813,9 @@ void dtw_fpga(core_t* core,db_t* db){
             while ((ref_i < core->ref->num_ref) && (ref_id < 0)) {
                 // account for the reverse representation of DNA reference
                 if (!rna) {
-                    offset_add = core->ref->ref_lengths[ref_i]*2 + 10;
+                    offset_add = core->ref->ref_lengths[ref_i]*2 + REFERENCE_BUFFER_LENGTH;
                 } else {
-                    offset_add = core->ref->ref_lengths[ref_i] + 10;
+                    offset_add = core->ref->ref_lengths[ref_i] + REFERENCE_BUFFER_LENGTH;
                 }
                 
                 curr_pos += offset_add;
@@ -824,7 +823,6 @@ void dtw_fpga(core_t* core,db_t* db){
                 if (curr_pos > results.position) {
                     ref_id = ref_i;
                     offset_pos = curr_pos - offset_add;
-                    // INFO("ref_id: %d, ref_length: %d, offset_pos: %d", ref_id, core->ref->ref_lengths[ref_i], offset_pos);
                 }
 
                 ref_i++;
@@ -836,7 +834,7 @@ void dtw_fpga(core_t* core,db_t* db){
 
             int32_t pos_end_tmp = (int32_t) (results.position - offset_pos);
 
-            // INFO("og_pos: %d, actual_pos: %d", results.position, pos_end_tmp);
+            INFO("og_pos: %d, actual_pos: %d", results.position, pos_end_tmp);
             
             db->aln[i].score = ((float)results.score)/32.0;
             db->aln[i].score2 = ((float)results.score)/32.0;
@@ -867,7 +865,6 @@ void dtw_fpga(core_t* core,db_t* db){
 
             free(aln);
         }
-
 
     }
 }
