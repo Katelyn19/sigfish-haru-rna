@@ -854,8 +854,8 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
 
         ///////// concatenate references ///////////////
         int32_t rlen = 0;
-        for (int i = 0; i < core->ref->num_ref; i++) {
-            rlen += core->ref->ref_lengths[i];
+        for (int j = 0; j < core->ref->num_ref; j++) {
+            rlen += core->ref->ref_lengths[j];
         }
 
         SIG_DTYPE *ref = (SIG_DTYPE *)malloc(sizeof(SIG_DTYPE) * rlen );
@@ -988,6 +988,9 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
 
         aln[SECONDARY_CAP-1].pos_end = (int32_t) (pos_og - offset_pos);
         aln[SECONDARY_CAP-1].pos_st = (int32_t) (aln[SECONDARY_CAP-1].pos_st - offset_pos);
+        aln[SECONDARY_CAP-1].rid = ref_id;
+        
+        INFO("before ref_st_offset: %d", aln[SECONDARY_CAP-1].pos_end);
         
         ////////////////////////////////////////////////
 
