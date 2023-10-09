@@ -783,12 +783,6 @@ void dtw_fpga(core_t* core,db_t* db){
                         query[qlen+j] = (int32_t) 0;
                     }
                 }
-
-                // VERBOSE("%s", "============================= padding ====================");
-                // VERBOSE("qlen: %d pad_len: %d", qlen, pad_len);
-                // for (int j = 0; j < HARU_QLEN; j++) {
-                //     VERBOSE("query[%d]: %d", j, query[j]);
-                // }
             }
 
             // // add buffer to prevent mapping over concatenation
@@ -806,7 +800,7 @@ void dtw_fpga(core_t* core,db_t* db){
             
             double haru_start = realtime();
             haru_process_query(core->haru, query_r, HARU_QLEN+2, &results);
-            core->haru_time = realtime() - haru_start;
+            core->haru_time += realtime() - haru_start;
 
             free(query_r);
             
@@ -859,15 +853,12 @@ void dtw_fpga(core_t* core,db_t* db){
                 db->aln[i].d = '+';
             }
 
-            if (rna) {
-                db->aln[i].pos_st = db->aln[i].d == '+' ? pos_st_tmp : core->ref->ref_lengths[ref_id] - pos_end_tmp  ;
-                db->aln[i].pos_end = db->aln[i].d == '+' ? pos_end_tmp : core->ref->ref_lengths[ref_id] - pos_st_tmp  ;
+            db->aln[i].pos_end = pos_end_tmp;
+            db->aln[i].pos_st = pos_st_tmp;
 
+            if (rna) {
                 db->aln[i].pos_st += core->ref->ref_st_offset[ref_id];
                 db->aln[i].pos_end += core->ref->ref_st_offset[ref_id];            
-            } else {
-                db->aln[i].pos_end = pos_end_tmp;
-                db->aln[i].pos_st = pos_st_tmp;
             }
 
             // TODO: assign reference id according to concatenation
