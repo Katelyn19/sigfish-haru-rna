@@ -853,22 +853,23 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
             // int32_t rlen =core->ref->ref_lengths[j];
 
         ///////// concatenate references ///////////////
-        int32_t rlen;
+        int32_t rlen = 0;
         for (int i = 0; i < core->ref->num_ref; i++) {
             rlen += core->ref->ref_lengths[i];
         }
 
-        int32_t *ref = (int32_t *)malloc(sizeof(int32_t) * rlen );
+        SIG_DTYPE *ref = (SIG_DTYPE *)malloc(sizeof(SIG_DTYPE) * rlen );
         MALLOC_CHK(ref);
 
-        int ref_i = 0;
+        int conc_ref_i = 0;
         for (int j = 0; j < core->ref->num_ref; j++) {
             for (int k = 0; k < core->ref->ref_lengths[j]; k++) {
-                ref[ref_i] = (int32_t) (core->ref->forward[j][k] * 32);
+                ref[conc_ref_i] = (SIG_DTYPE) (core->ref->forward[j][k] * SCALING);
 
-                ref_i++;
+                conc_ref_i++;
             }
         }
+        /////////////////////////////////////////////////
 
         // float *cost = (float *)malloc(sizeof(float) * qlen * rlen);
         COST_DTYPE *cost = (COST_DTYPE *)malloc(sizeof(COST_DTYPE)*(qlen*rlen));
@@ -902,43 +903,7 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
                 }
                 // update_aln(aln, min_score, j, min_pos-(qlen-1)*rlen, '+', cost, qlen, rlen);
 
-                ////// calculate actual pos //////    
-                int32_t pos_1d = min_pos-(qlen-1)*rlen;
-
-                // TODO: calculate position relative to de-concatenated reference
-                int curr_pos = 2;
-                int offset_add;
-                int offset_pos = -1;
-                int ref_id = -1;
-                int ref_i = 0;
-
-                while ((ref_i < core->ref->num_ref) && (ref_id < 0)) {
-                    // account for the reverse representation of DNA reference
-                    if (!rna) {
-                        offset_add = core->ref->ref_lengths[ref_i]*2;
-                    } else {
-                        offset_add = core->ref->ref_lengths[ref_i];
-                    }
-                    
-                    curr_pos += offset_add;
-
-                    if (curr_pos > pos_1d) {
-                        ref_id = ref_i;
-                        offset_pos = curr_pos - offset_add;
-                        // INFO("ref_id: %d, ref_length: %d, offset_pos: %d", ref_id, core->ref->ref_lengths[ref_i], offset_pos);
-                    }
-
-                    ref_i++;
-                }
-
-                if (ref_id < 0) {
-                    fprintf(stderr, "Mapped position %d is out of bounds %d", pos_1d, curr_pos);
-                }
-
-                int32_t pos_actual = (int32_t) (pos_1d - offset_pos);
-
-                // int32_t pos_actual = ;
-                update_aln_DS(aln, min_score, ref_id, pos_actual, '+', cost, qlen, rlen);
+                update_aln_DS(aln, min_score, 0, min_pos-(qlen-1)*rlen, '+', cost, qlen, rlen);
 
             }
 
@@ -988,6 +953,43 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
         free(ref);
 
         free(query);
+
+        ///////////// calculate actual pos ///////////////    
+        int32_t pos_og = aln[SECONDARY_CAP-1].pos_end;
+
+        int curr_pos = 0;
+        int offset_add;
+        int offset_pos = -1;
+        int ref_id = -1;
+        int ref_i = 0;
+
+        while ((ref_i < core->ref->num_ref) && (ref_id < 0)) {
+            // account for the reverse representation of DNA reference
+            if (!rna) {
+                offset_add = core->ref->ref_lengths[ref_i]*2;
+            } else {
+                offset_add = core->ref->ref_lengths[ref_i];
+            }
+            
+            curr_pos += offset_add;
+
+            if (curr_pos > pos_og) {
+                ref_id = ref_i;
+                offset_pos = curr_pos - offset_add;
+                // INFO("ref_id: %d, ref_length: %d, offset_pos: %d", ref_id, core->ref->ref_lengths[ref_i], offset_pos);
+            }
+
+            ref_i++;
+        }
+
+        if (ref_id < 0) {
+            fprintf(stderr, "Mapped position %d is out of bounds %d", pos_og, curr_pos);
+        }
+
+        aln[SECONDARY_CAP-1].pos_end = (int32_t) (pos_og - offset_pos);
+        aln[SECONDARY_CAP-1].pos_st = (int32_t) (aln[SECONDARY_CAP-1].pos_st - offset_pos);
+        
+        ////////////////////////////////////////////////
 
         db->aln[i].score = aln[SECONDARY_CAP-1].score;
         db->aln[i].score2 = aln[SECONDARY_CAP-2].score;
