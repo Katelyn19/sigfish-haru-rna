@@ -158,7 +158,7 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
                 if (ref[ref_i-1] < 0) {
                     buffer_val = SIGNAL_DTYPE_MAX;
                 } else {
-                    buffer_val = -SIGNAL_DTYPE_MAX;
+                    buffer_val = SIGNAL_DTYPE_MIN;
                 }
 
                 for (int j = 0; j < REFERENCE_BUFFER_LENGTH; j++) {
@@ -804,9 +804,9 @@ void dtw_fpga(core_t* core,db_t* db){
             free(query_r);
             
             // TODO: calculate position relative to de-concatenated reference
-            int curr_pos = 2;
-            int offset_add;
-            int offset_pos = -1;
+            int32_t curr_pos = 2;
+            int32_t offset_add;
+            int32_t offset_pos = -1;
             int ref_id = -1;
             int ref_i = 0;
 
@@ -834,7 +834,7 @@ void dtw_fpga(core_t* core,db_t* db){
 
             int32_t pos_end_tmp = (int32_t) (results.position - offset_pos);
 
-            INFO("og_pos: %d, actual_pos: %d", results.position, pos_end_tmp);
+            // INFO("id: %d, og_pos: %d, actual_pos: %d", i, results.position, pos_end_tmp);
             
             db->aln[i].score = ((float)results.score)/32.0;
             db->aln[i].score2 = ((float)results.score)/32.0;
