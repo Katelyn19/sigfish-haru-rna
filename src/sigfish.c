@@ -865,7 +865,6 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
         for (int j = 0; j < core->ref->num_ref; j++) {
             for (int k = 0; k < core->ref->ref_lengths[j]; k++) {
                 ref[conc_ref_i] = (SIG_DTYPE) (core->ref->forward[j][k] * SCALING);
-
                 conc_ref_i++;
             }
         }
@@ -990,7 +989,7 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
         aln[SECONDARY_CAP-1].pos_st = (int32_t) (aln[SECONDARY_CAP-1].pos_st - offset_pos);
         aln[SECONDARY_CAP-1].rid = ref_id;
         
-        INFO("before ref_st_offset: %d", aln[SECONDARY_CAP-1].pos_end);
+        // INFO("before ref_st_offset: %d", aln[SECONDARY_CAP-1].pos_end);
         
         ////////////////////////////////////////////////
 
