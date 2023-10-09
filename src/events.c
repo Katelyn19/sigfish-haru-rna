@@ -519,8 +519,11 @@ event_table detect_events(raw_table const rt, detector_param const edparam, core
 
     start = realtime();
     float* tstat1 = compute_tstat(sums, sumsqs, rt.n, edparam.window_length1);
+    core->compute_tstat_1 += realtime() - start;
+
+    start = realtime();
     float* tstat2 = compute_tstat(sums, sumsqs, rt.n, edparam.window_length2);
-    core->compute_tstat += realtime() - start;
+    core->compute_tstat_2 += realtime() - start;
 
     Detector short_detector = {.DEF_PEAK_POS = -1,
                                .DEF_PEAK_VAL = FLT_MAX,

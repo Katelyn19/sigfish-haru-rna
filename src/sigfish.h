@@ -221,7 +221,8 @@ typedef struct {
     double trim_and_segment_raw_time;
     double detect_events_time;
     double compute_sum_sumsq;
-    double compute_tstat;
+    double compute_tstat_1;
+    double compute_tstat_2;
     double short_long_peak_detector;
     double create_events;
 

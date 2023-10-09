@@ -111,7 +111,8 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
     core->trim_and_segment_raw_time=0;
     core->detect_events_time=0;
     core->compute_sum_sumsq=0;
-    core->compute_tstat=0;
+    core->compute_tstat_1=0;
+    core->compute_tstat_2=0;
     core->short_long_peak_detector=0;
     core->create_events=0;
 
