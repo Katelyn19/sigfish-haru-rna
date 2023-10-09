@@ -782,19 +782,13 @@ void dtw_fpga(core_t* core,db_t* db){
                         query[qlen+j] = (int32_t) 0;
                     }
                 }
-
-                // VERBOSE("%s", "============================= padding ====================");
-                // VERBOSE("qlen: %d pad_len: %d", qlen, pad_len);
-                // for (int j = 0; j < HARU_QLEN; j++) {
-                //     VERBOSE("query[%d]: %d", j, query[j]);
-                // }
             }
 
             search_result_t results;
             
             double haru_start = realtime();
             haru_process_query(core->haru, query_r, HARU_QLEN+2, &results);
-            core->haru_time = realtime() - haru_start;
+            core->haru_time += realtime() - haru_start;
 
             free(query_r);
 
