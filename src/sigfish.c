@@ -1010,7 +1010,7 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
         aln[SECONDARY_CAP-1].pos_st = (int32_t) (aln[SECONDARY_CAP-1].pos_st - offset_pos);
         aln[SECONDARY_CAP-1].rid = ref_id;
         
-        INFO("id: %d, og_pos: %d, actual_pos: %d ", i, pos_og, aln[SECONDARY_CAP-1].pos_end);
+        // INFO("id: %d, og_pos: %d, actual_pos: %d ", i, pos_og, aln[SECONDARY_CAP-1].pos_end);
         
         ////////////////////////////////////////////////
 
