@@ -61,7 +61,7 @@ typedef uint16_t COST_DTYPE;
 // #define SCALING 128.0
 
 /* for concatenation */
-#define REF_BUFFER_LEN 1
+#define REF_BUFFER_LEN 10
 #define COST_SIG_DTYPE_MAX INT16_MAX
 
 //linear segment alignment record
