@@ -96,6 +96,11 @@ typedef struct {
 
     float **forward;
     float **reverse;
+
+    // floating_point_concat
+    float *refs_concat;
+    int32_t rlen_concat;
+
 } refsynth_t;
 
 

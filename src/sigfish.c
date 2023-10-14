@@ -91,10 +91,26 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
     // }
     core->kmer_size = kmer_size;
 
-
     //synthetic reference
     core->ref = gen_ref(fastafile,core->model,kmer_size,opt.flag, opt.query_size);
     core->opt = opt;
+
+    // Concatenate References 
+    int32_t rlen = 0;
+    for (int j = 0; j < core->ref->num_ref; j++) {
+        rlen += core->ref->ref_lengths[j];
+    }
+
+    core->ref->refs_concat = (float *) malloc(sizeof(float) * rlen);
+    core->ref->rlen_concat = rlen;
+
+    int ref_i = 0;
+    for (int j = 0; j < core->ref->num_ref; j++) {
+        for (int k = 0; k < core->ref->ref_lengths[j]; k++) {
+            core->ref->refs_concat[ref_i] = core->ref->forward[j][k];
+            ref_i++;
+        }
+    }
 
     //realtime0
     core->realtime0=realtime0;
@@ -589,104 +605,99 @@ void dtw_single(core_t* core,db_t* db, int32_t i) {
             }
         }
 
-        //fprintf(stderr,"numref %d\n",core->ref->num_ref)    ;
-        for(int j=0;j<core->ref->num_ref;j++){
+        // grab the concatenated reference
+        int32_t rlen = core->ref->rlen_concat;
+                    
+        float *cost = (float *)malloc(sizeof(float) * qlen * rlen);
+        MALLOC_CHK(cost);
 
-            int32_t rlen =core->ref->ref_lengths[j];
-            float *cost = (float *)malloc(sizeof(float) * qlen * rlen);
-            MALLOC_CHK(cost);
 
-            //fprintf(stderr,"%d,%d\n",qlen,rlen);
+        if(!(core->opt.flag & SIGFISH_DTW)){
 
-            if(!(core->opt.flag & SIGFISH_DTW)){
-                // fprintf(stderr,"query: ");
-                // for(int k=0;k<qlen;k++){
-                //     fprintf(stderr,"%f,",query[k]);
-                // }
-                //                 fprintf(stderr,"\n");
-                // fprintf(stderr,"Ref: ");
+            // align with concatenated references
+            subsequence(query, core->ref->refs_concat, qlen , rlen, cost);
 
-                // for(int k=0;k<rlen;k++){
-                //     fprintf(stderr,"%f,",core->ref->forward[j][k]);
-                // }
-                // fprintf(stderr,"\n\n");
-                subsequence(query, core->ref->forward[j], qlen , rlen, cost);
-                for(int k=(qlen-1)*rlen; k< qlen*rlen; k+=qlen){
-                    float min_score = INFINITY;
-                    int32_t min_pos = -1;
-                    for(int m=0;m<qlen && k+m<qlen*rlen;m++){
-                        if(cost[k+m] < min_score){
-                            min_score = cost[k+m];
-                            min_pos = m+k;
-                        }
+            // get the minimum score
+            for(int k=(qlen-1)*rlen; k< qlen*rlen; k+=qlen){
+                float min_score = INFINITY;
+                int32_t min_pos = -1;
+                for(int m=0;m<qlen && k+m<qlen*rlen;m++){
+                    if(cost[k+m] < min_score){
+                        min_score = cost[k+m];
+                        min_pos = m+k;
                     }
-                    update_aln(aln, min_score, j, min_pos-(qlen-1)*rlen, '+', cost, qlen, rlen);
                 }
 
-                // for(int k=(qlen-1)*rlen; k< qlen*rlen; k++){
-                //     update_aln(aln, cost[k], j, k-(qlen-1)*rlen, '+',);
-                //     // if(cost[k]<score){
-                //     //     score2=score;
-                //     //     score = cost[k];
-                //     //     pos = k-(qlen-1)*rlen;
-                //     //     rid = j;
-                //     //     d = '+';
-                //     // }
-                // }
+                // update results
+                update_aln(aln, min_score, 0, min_pos-(qlen-1)*rlen, '+', cost, qlen, rlen);
             }
-            else{
-                std_dtw(query, core->ref->forward[j], qlen , rlen, cost, 0);
-                int k=qlen*rlen-1;
-                update_aln(aln, cost[k], j, k-(qlen-1)*rlen, '+', cost, qlen, rlen);
-                // if(cost[k]<score){
-                //     score2=score;
-                //     score = cost[k];
-                //     pos = k-(qlen-1)*rlen;
-                //     rid = j;
-                //     d = '+';
-                // }
-            }
-            // for(int k=0;k<qlen;k++){
-            //     for(int l=0;l<rlen;l++){
-            //         fprintf(stderr,"%f,",cost[k*rlen+l]);
-            //     }
-            //     fprintf(stderr,"\n");
-            // }
-            // fprintf(stderr,"\n");
-            // exit(0);
+        }
 
-            if (!rna) {
-                subsequence(query, core->ref->reverse[j], qlen , rlen, cost);
+        else {
 
-                for(int k=(qlen-1)*rlen; k< qlen*rlen; k+=qlen){
-                    float min_score = INFINITY;
-                    int32_t min_pos = -1;
-                    for(int m=0; m<qlen && k+m<qlen*rlen; m++){
-                        if(cost[k+m] < min_score){
-                            min_score = cost[k+m];
-                            min_pos = m+k;
-                        }
-                    }
-                    update_aln(aln, min_score, j, min_pos-(qlen-1)*rlen, '-', cost, qlen, rlen);
-                }
-
-                // for(int k=(qlen-1)*rlen; k< qlen*rlen; k++){
-                //     update_aln(aln, cost[k], j, k-(qlen-1)*rlen, '-');
-                //     // if(cost[k]<score){
-                //     //     score2=score;
-                //     //     score = cost[k];
-                //     //     pos = k-(qlen-1)*rlen;
-                //     //     rid = j;
-                //     //     d = '-';
-                //     // }
-                // }
-            }
-
-            free(cost);
+            std_dtw(query, core->ref->refs_concat, qlen , rlen, cost, 0);
+            int k=qlen*rlen-1;
+            update_aln(aln, cost[k], 0, k-(qlen-1)*rlen, '+', cost, qlen, rlen);
 
         }
 
+        if (!rna) {
+            subsequence(query, core->ref->reverse[0], qlen , rlen, cost);
+
+            for(int k=(qlen-1)*rlen; k< qlen*rlen; k+=qlen){
+                float min_score = INFINITY;
+                int32_t min_pos = -1;
+                for(int m=0; m<qlen && k+m<qlen*rlen; m++){
+                    if(cost[k+m] < min_score){
+                        min_score = cost[k+m];
+                        min_pos = m+k;
+                    }
+                }
+                update_aln(aln, min_score, 0, min_pos-(qlen-1)*rlen, '-', cost, qlen, rlen);
+            }
+        }
+
+        free(cost);
+
         free(query);
+
+        /* deserialise ending position */
+        int32_t pos_og = aln[SECONDARY_CAP-1].pos_end;
+
+        int curr_pos = 0;
+        int offset_add;
+        int offset_pos = -1;
+        int ref_id = -1;
+        int ref_i = 0;
+
+        while ((ref_i < core->ref->num_ref) && (ref_id < 0)) {
+            // account for the reverse representation of DNA reference
+            if (!rna) {
+                offset_add = core->ref->ref_lengths[ref_i]*2;
+            } else {
+                offset_add = core->ref->ref_lengths[ref_i];
+            }
+            
+            curr_pos += offset_add;
+
+            if (curr_pos > pos_og) {
+                ref_id = ref_i;
+                offset_pos = curr_pos - offset_add;
+                // INFO("ref_id: %d, ref_length: %d, offset_pos: %d", ref_id, core->ref->ref_lengths[ref_i], offset_pos);
+            }
+
+            ref_i++;
+        }
+
+        if (ref_id < 0) {
+            fprintf(stderr, "Mapped position %d is out of bounds %d \n", pos_og, curr_pos);
+        }
+
+        aln[SECONDARY_CAP-1].pos_end = (int32_t) (pos_og - offset_pos);
+        aln[SECONDARY_CAP-1].pos_st = (int32_t) (aln[SECONDARY_CAP-1].pos_st - offset_pos);
+        aln[SECONDARY_CAP-1].rid = ref_id;
+
+        /* end deserialisation */
 
         db->aln[i].score = aln[SECONDARY_CAP-1].score;
         db->aln[i].score2 = aln[SECONDARY_CAP-2].score;
