@@ -822,7 +822,7 @@ void dtw_fpga(core_t* core,db_t* db){
                 ERROR("Mapped position %d is out of bounds %d", results.position, curr_pos);
             }
 
-            int32_t pos_end_tmp = (int32_t) (results.position - offset_pos);
+            int32_t pos_end_tmp = (int32_t) (results.position - offset_pos + 1);
 
             // INFO("og_pos: %d, actual_pos: %d", results.position, pos_end_tmp);
             
@@ -847,6 +847,10 @@ void dtw_fpga(core_t* core,db_t* db){
             if (rna) {
                 db->aln[i].pos_st += core->ref->ref_st_offset[ref_id];
                 db->aln[i].pos_end += core->ref->ref_st_offset[ref_id];            
+            }
+
+            if (db->aln[i].pos_st < 0) {
+                db->aln[i].pos_st = 0;
             }
 
             // TODO: assign reference id according to concatenation
