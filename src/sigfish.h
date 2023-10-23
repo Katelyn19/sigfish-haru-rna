@@ -225,6 +225,7 @@ typedef struct {
     double compute_tstat_2;
     double short_long_peak_detector;
     double create_events;
+    FILE *event_profile;
 
     //stats //set by output_db
     int64_t sum_bytes;

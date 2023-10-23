@@ -123,6 +123,11 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
     core->ignored=0;
     core->too_short=0;
 
+    core->event_profile = fopen("event_profile.csv", "w");
+    if (core->event_profile == NULL) {
+        ERROR("%s", "Could not create file event_profile.csv\n");
+    }
+
 #ifdef HAVE_ACC
     if (core->opt.flag & SIGFISH_ACC) {
         VERBOSE("%s","Initialising accelator");
@@ -200,6 +205,8 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
 
 /* free the core data structure */
 void free_core(core_t* core,opt_t opt) {
+    fclose(core->event_profile);
+
     free(core->model);
     // free(core->cpgmodel);
 
