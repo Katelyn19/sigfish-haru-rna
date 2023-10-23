@@ -181,11 +181,19 @@ subsequence(float *x, float *y, int n, int m, float *cost)
   for (j=1; j<m; j++)
     cost[j] = fabs(x[0]-y[j]); // subsequence variation: D(0,j) := c(x0, yj)
 
-  for (i=1; i<n; i++)
-    for (j=1; j<m; j++)
-      cost[i*m+j] = fabs(x[i]-y[j]) +
-	min3(cost[(i-1)*m+j], cost[(i-1)*m+(j-1)], cost[i*m+(j-1)]);
+  for (i=1; i<n; i++) {
+    for (j=1; j<m; j++) {
+      float abs = fabs(x[i]-y[j]);
+      float add = min3(cost[(i-1)*m+j], cost[(i-1)*m+(j-1)], cost[i*m+(j-1)]);
+      float acc = abs + add;
+      if (acc >= FLT_MAX || acc <= abs || acc <= add) {
+          fprintf(stderr, "%s", "!! overflow occurred\n");
+      }
 
+      cost[i*m+j] = fabs(x[i]-y[j]) + min3(cost[(i-1)*m+j], cost[(i-1)*m+(j-1)], cost[i*m+(j-1)]);
+    }
+  }
+  
 }
 
 
