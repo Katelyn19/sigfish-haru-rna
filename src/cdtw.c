@@ -186,8 +186,13 @@ subsequence(float *x, float *y, int n, int m, float *cost)
       float abs = fabs(x[i]-y[j]);
       float add = min3(cost[(i-1)*m+j], cost[(i-1)*m+(j-1)], cost[i*m+(j-1)]);
       float acc = abs + add;
-      if (acc >= FLT_MAX || acc <= abs || acc <= add) {
-          fprintf(stderr, "%s", "!! overflow occurred\n");
+
+      if ((FLT_MAX - add) < abs || (FLT_MAX - abs) < add) {
+        fprintf(stderr, "!! overflow will occur \n");
+      }
+
+      if (acc >= FLT_MAX || acc < abs || acc < add) {
+          fprintf(stderr, "!! overflow occurred abs: %f, add: %f, acc: %f \n", abs, add, acc);
       }
 
       cost[i*m+j] = fabs(x[i]-y[j]) + min3(cost[(i-1)*m+j], cost[(i-1)*m+(j-1)], cost[i*m+(j-1)]);
