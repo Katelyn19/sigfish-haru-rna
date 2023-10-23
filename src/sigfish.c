@@ -130,6 +130,8 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
     core->ignored=0;
     core->too_short=0;
 
+    core->map_over_concat=0;
+
 #ifdef HAVE_ACC
     if (core->opt.flag & SIGFISH_ACC) {
         VERBOSE("%s","Initialising accelator");
@@ -714,6 +716,10 @@ void dtw_single(core_t* core,db_t* db, int32_t i) {
             mapq=60;
         }
         db->aln[i].mapq = mapq;
+
+        if (db->aln[i].pos_st < 0) {
+            core->map_over_concat++;
+        }
 
         free(aln);
     }

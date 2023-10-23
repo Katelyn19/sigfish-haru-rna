@@ -310,7 +310,7 @@ int dtw_main(int argc, char* argv[]) {
             fprintf(stderr, "\n[%s]     - Events time: %.3f sec",__func__, core->event_time);
             fprintf(stderr, "\n[%s]     - Normalise time: %.3f sec",__func__, core->normalise_time);
             fprintf(stderr, "\n[%s]     - DTW time: %.3f sec",__func__, core->dtw_time);
-            fprintf(stderr, "\n[%s]     - Haru time: %.3f sec",__func__, core->haru_time);
+            fprintf(stderr, "\n[%s] mapped over concat: %ld queries",__func__, core->map_over_concat);
     }
 
     fprintf(stderr, "\n[%s] Data output time: %.3f sec", __func__,core->output_time);

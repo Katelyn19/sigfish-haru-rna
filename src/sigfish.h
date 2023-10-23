@@ -229,6 +229,7 @@ typedef struct {
     int64_t prefix_fail; //automatic query start detection failed
     int64_t ignored; //shorter than the prefix set by user and thus fully ignored
     int64_t too_short;   //shorter then the prefix+query set by user, still will be mapped the possible part
+    int64_t map_over_concat;
 
     refsynth_t *ref;
 
