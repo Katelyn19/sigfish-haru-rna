@@ -12,6 +12,9 @@
 #include <haru.h>
 #define HARU_QLEN                   250
 
+// Padding Values
+#define PAD_LENGTH 1
+#define PAD_VALUE 500
 #endif
 
 #define SIGFISH_VERSION "0.1.0"

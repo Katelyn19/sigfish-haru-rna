@@ -136,9 +136,9 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
         int32_t acc_rlen;
 
         if (core->opt.flag & SIGFISH_RNA) {
-            // TODO: concatenate multiple references
+            // concatenate references with padding in between
 
-            int32_t rlen_total = 0;
+            int32_t rlen_total = core->ref->num_ref * PAD_LENGTH;
 
             for (int i = 0; i < core->ref->num_ref; i++) {
                 rlen_total += core->ref->ref_lengths[i];
@@ -152,6 +152,11 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
                 for (int j = 0; j < core->ref->ref_lengths[i]; j++) {
                     ref[ref_i] = (int32_t) (core->ref->forward[i][j] * 32);
 
+                    ref_i++;
+                }
+
+                for (int k = 0; k < PAD_LENGTH; k++) {
+                    ref[ref_i] = PAD_VALUE;
                     ref_i++;
                 }
             }
@@ -792,7 +797,7 @@ void dtw_fpga(core_t* core,db_t* db){
 
             free(query_r);
 
-            // TODO: calculate position relative to de-concatenated reference
+            // Deserialise ending position
             int curr_pos = 2;
             int offset_add;
             int offset_pos = -1;
@@ -802,9 +807,9 @@ void dtw_fpga(core_t* core,db_t* db){
             while ((ref_i < core->ref->num_ref) && (ref_id < 0)) {
                 // account for the reverse representation of DNA reference
                 if (!rna) {
-                    offset_add = core->ref->ref_lengths[ref_i]*2;
+                    offset_add = core->ref->ref_lengths[ref_i]*2 + PAD_LENGTH;
                 } else {
-                    offset_add = core->ref->ref_lengths[ref_i];
+                    offset_add = core->ref->ref_lengths[ref_i] + PAD_LENGTH;
                 }
                 
                 curr_pos += offset_add;
