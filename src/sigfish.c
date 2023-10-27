@@ -96,7 +96,7 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
     core->opt = opt;
 
     // Concatenate References 
-    int32_t rlen = 0;
+    int32_t rlen = core->ref->num_ref * PAD_LENGTH;
     for (int j = 0; j < core->ref->num_ref; j++) {
         rlen += core->ref->ref_lengths[j];
     }
@@ -108,6 +108,11 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
     for (int j = 0; j < core->ref->num_ref; j++) {
         for (int k = 0; k < core->ref->ref_lengths[j]; k++) {
             core->ref->refs_concat[ref_i] = core->ref->forward[j][k];
+            ref_i++;
+        }
+
+        for (int k = 0; k < PAD_LENGTH; k++) {
+            core->ref->refs_concat[ref_i] = PAD_VALUE;
             ref_i++;
         }
     }
@@ -675,9 +680,9 @@ void dtw_single(core_t* core,db_t* db, int32_t i) {
         while ((ref_i < core->ref->num_ref) && (ref_id < 0)) {
             // account for the reverse representation of DNA reference
             if (!rna) {
-                offset_add = core->ref->ref_lengths[ref_i]*2;
+                offset_add = core->ref->ref_lengths[ref_i]*2 + PAD_LENGTH;
             } else {
-                offset_add = core->ref->ref_lengths[ref_i];
+                offset_add = core->ref->ref_lengths[ref_i] + PAD_LENGTH;
             }
             
             curr_pos += offset_add;

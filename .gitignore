@@ -93,6 +93,8 @@ err.paftest.paf
 =======
 
 test/**
+*.csv
+
 >>>>>>> haru-rna
 =======
 /test/uhr
