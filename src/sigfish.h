@@ -55,7 +55,7 @@
 
 // Padding Values
 #define PAD_LENGTH 1
-#define PAD_VALUE 500
+#define PAD_VALUE 500 // 500
 
 /* a single signal-space event : adapted from taken from scrappie */
 typedef struct {
