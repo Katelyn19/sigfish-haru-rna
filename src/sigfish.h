@@ -66,6 +66,10 @@ typedef uint16_t COST_DTYPE;
 #define LSAR_TMATCH 'M'      //match in the target
 #define LSAR_QMATCH 'm'   //match in the query
 
+// Padding Values
+#define PAD_LENGTH 1
+#define PAD_VALUE 500 // 500
+
 /* a single signal-space event : adapted from taken from scrappie */
 typedef struct {
     uint64_t start;

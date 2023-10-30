@@ -130,22 +130,27 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
     }
     
     ///////// concatenate references ///////////////
-        int32_t rlen = 0;
-        for (int j = 0; j < core->ref->num_ref; j++) {
-            rlen += core->ref->ref_lengths[j];
+    int32_t rlen = core->ref->num_ref * PAD_LENGTH;
+    for (int j = 0; j < core->ref->num_ref; j++) {
+        rlen += core->ref->ref_lengths[j];
+    }
+
+    core->ref->ref_length_concat = rlen;
+    core->ref->refs_concat = (SIG_DTYPE *)malloc(sizeof(SIG_DTYPE) * rlen );
+    MALLOC_CHK(core->ref->refs_concat);
+
+    int conc_ref_i = 0;
+    for (int j = 0; j < core->ref->num_ref; j++) {
+        for (int k = 0; k < core->ref->ref_lengths[j]; k++) {
+            core->ref->refs_concat[conc_ref_i] = core->ref->forward_scaled[j][k];
+            conc_ref_i++;
         }
 
-        core->ref->ref_length_concat = rlen;
-        core->ref->refs_concat = (SIG_DTYPE *)malloc(sizeof(SIG_DTYPE) * rlen );
-        MALLOC_CHK(core->ref->refs_concat);
-
-        int conc_ref_i = 0;
-        for (int j = 0; j < core->ref->num_ref; j++) {
-            for (int k = 0; k < core->ref->ref_lengths[j]; k++) {
-                core->ref->refs_concat[conc_ref_i] = core->ref->forward_scaled[j][k];
-                conc_ref_i++;
-            }
+        for (int k = 0; k < PAD_LENGTH; k++) {
+            core->ref->refs_concat[conc_ref_i] = PAD_VALUE;
+            conc_ref_i++;
         }
+    }
     /////////////////////////////////////////////////
 
 #endif
@@ -968,9 +973,9 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
         while ((ref_i < core->ref->num_ref) && (ref_id < 0)) {
             // account for the reverse representation of DNA reference
             if (!rna) {
-                offset_add = core->ref->ref_lengths[ref_i]*2;
+                offset_add = core->ref->ref_lengths[ref_i]*2 + PAD_LENGTH;
             } else {
-                offset_add = core->ref->ref_lengths[ref_i];
+                offset_add = core->ref->ref_lengths[ref_i] + PAD_LENGTH;
             }
             
             curr_pos += offset_add;
