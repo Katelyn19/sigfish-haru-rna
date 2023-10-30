@@ -113,6 +113,9 @@ typedef struct {
 #ifdef TEST_SCALING
     SIG_DTYPE **forward_scaled;
     SIG_DTYPE **reverse_scaled;
+
+    SIG_DTYPE *refs_concat;
+    int32_t ref_length_concat;
 #endif
 
 } refsynth_t;
