@@ -243,15 +243,15 @@ COST_DTYPE hw_pe(SIG_DTYPE x, SIG_DTYPE y, COST_DTYPE n, COST_DTYPE m, COST_DTYP
       cost = (y - x);
     }
 
-    if (COST_DTYPE_MAX - cost < min) {
-      fprintf(stderr, "Overflow will occur \n");
-    }
+    // if (COST_DTYPE_MAX - cost < min) {
+    //   fprintf(stderr, "Overflow will occur \n");
+    // }
 
-    uint64_t acc = (uint64_t) (cost) + (uint64_t) (min);
+    // uint64_t acc = (uint64_t) (cost) + (uint64_t) (min);
 
-    if (acc >= COST_DTYPE_MAX ) {
-      fprintf(stderr, "Overflow occured, cost: %d, min: %d, cost + min: %ld\n", cost, min, acc);
-    }
+    // if (acc >= COST_DTYPE_MAX ) {
+    //   fprintf(stderr, "Overflow occured, cost: %d, min: %d, cost + min: %ld\n", cost, min, acc);
+    // }
     
     return cost + min;
 }

@@ -55,11 +55,6 @@ typedef uint16_t COST_DTYPE;
 #define COST_DTYPE_MAX UINT16_MAX
 #define SCALING 32.0
 
-// typedef int16_t SIG_DTYPE;
-// typedef uint16_t COST_DTYPE;
-// #define COST_DTYPE_MAX UINT16_MAX
-// #define SCALING 128.0
-
 //linear segment alignment record
 #define LSAR_TJUMP 'J'      //jump in the target
 #define LSAR_QJUMP 'j'      //jump in the query
