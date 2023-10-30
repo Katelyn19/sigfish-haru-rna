@@ -958,7 +958,6 @@ void dtw_single_scaling(core_t* core,db_t* db, int32_t i) {
         }
 
         free(cost);
-
         free(query);
 
         ///////////// calculate actual pos ///////////////    
