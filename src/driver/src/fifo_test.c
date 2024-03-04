@@ -327,3 +327,36 @@ uint32_t get_mm2s_status(uint32_t *axi_dma_v_addr) {
         printf(" Err_Irq");
     printf("\n");
 }
+
+uint32_t get_mm2s_status(uint32_t *axi_dma_v_addr) {
+	uint32_t status = _reg_get(axi_dma_v_addr, 0x04);
+
+    printf("Stream to Memory-mapped status (0x%08x@0x%02x):", status, AXI_DMA_S2MM_SR);
+    if (status & (1 << AXI_DMA_SR_HALTED))
+        printf(" halted");
+    else
+        printf(" running");
+    if (status & (1 << AXI_DMA_SR_IDLE))
+        printf(" idle");
+    if (status & (1 << AXI_DMA_SR_SG_ACT))
+        printf(" SGIncld");
+    if (status & (1 << AXI_DMA_SR_DMA_INT_ERR))
+        printf(" DMAIntErr");
+    if (status & (1 << AXI_DMA_SR_DMA_SLV_ERR))
+        printf(" DMASlvErr");
+    if (status & (1 << AXI_DMA_SR_DMA_DEC_ERR))
+        printf(" DMADecErr");
+    if (status & (1 << AXI_DMA_SR_SG_INT_ERR))
+        printf(" SGIntErr");
+    if (status & (1 << AXI_DMA_SR_SG_SLV_ERR))
+        printf(" SGSlvErr");
+    if (status & (1 << AXI_DMA_SR_SG_DEC_ERR))
+        printf(" SGDecErr");
+    if (status & (1 << AXI_DMA_SR_IOC_IRQ))
+        printf(" IOC_Irq");
+    if (status & (1 << AXI_DMA_SR_DLY_IRQ))
+        printf(" Dly_Irq");
+    if (status & (1 << AXI_DMA_SR_ERR_IRQ))
+        printf(" Err_Irq");
+    printf("\n");
+}
