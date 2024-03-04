@@ -292,3 +292,38 @@ int fifo_test() {
 	return 0;
 }
 
+/*
+	Retrieves and decodes the status register of the mm2s interface.
+*/
+uint32_t get_mm2s_status(uint32_t *axi_dma_v_addr) {
+	uint32_t status = _reg_get(axi_dma_v_addr, 0x04);
+    printf("Memory-mapped to stream status (0x%08x@0x%02x):", status, AXI_DMA_MM2S_SR);
+    if (status & 0x00000001)
+        printf(" halted");
+    else
+        printf(" running");
+
+    if (status & 0x00000002)
+        printf(" idle");
+    if (status & 0x00000008)
+        printf(" SGIncld");
+    if (status & 0x00000010)
+        printf(" DMAIntErr");
+    if (status & 0x00000020)
+        printf(" DMASlvErr");
+    if (status & 0x00000040)
+        printf(" DMADecErr");
+    if (status & 0x00000100)
+        printf(" SGIntErr");
+    if (status & 0x00000200)
+        printf(" SGSlvErr");
+    if (status & 0x00000400)
+        printf(" SGDecErr");
+    if (status & 0x00001000)
+        printf(" IOC_Irq");
+    if (status & 0x00002000)
+        printf(" Dly_Irq");
+    if (status & 0x00004000)
+        printf(" Err_Irq");
+    printf("\n");
+}
