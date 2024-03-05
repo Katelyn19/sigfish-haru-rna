@@ -1,7 +1,7 @@
 CC       ?= gcc
 CXX      ?= g++
 LANGFLAG = -x c++
-CPPFLAGS += -I HARU/driver/include/ -D FPGA=1
+CPPFLAGS += -Iinclude/
 CFLAGS   += -g -Wall -O2 -std=c++11
 LDFLAGS  += $(LIBS) -lpthread -lz -rdynamic
 BUILD_DIR = build
@@ -31,7 +31,7 @@ $(BUILD_DIR)/main.o: src/main.c include/fifo_test.h
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $(LANGFLAG) $< -c -o $@
 
 #haru things
-$(BUILD_DIR)/fifo_test.o: src/fifo_test.c include/haru.h include/misc.h include/fifo_test.h
+$(BUILD_DIR)/fifo_test.o: src/fifo_test.c
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $(LANGFLAG) $< -c -o $@
 
 clean:

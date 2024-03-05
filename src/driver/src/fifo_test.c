@@ -51,7 +51,7 @@ int fifo_test() {
 		return -1;
 	}
 
-	uint32_t * axis_dst_v_addr = (uint32_t *) mmap(NULL, HARU_AXI_BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, HARU_AXI_SRC_ADDR); 
+	uint32_t * axis_dst_v_addr = (uint32_t *) mmap(NULL, HARU_AXI_BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, HARU_AXI_DST_ADDR); 
 	if (axis_dst_v_addr == MAP_FAILED) {
 		printf("Error: AXI DMA destination address map failed.\n");
 		close(dev_fd);
@@ -69,27 +69,46 @@ int fifo_test() {
 
 	// clear the fifo_interconnect
 	printf("Setting fifo interconnect clear to 1.\n");
-	// _reg_set(fifo_intcn_v_addr, 0x00, 1);
+	_reg_set(fifo_intcn_v_addr, 0x00, 1);
 	printf("Setting fifo interconnect clear to 0.\n");
-	// _reg_set(fifo_intcn_v_addr, 0x00, 0);
+	_reg_set(fifo_intcn_v_addr, 0x00, 0);
+
+	// reset the axi dma
+	printf("Resetting and stopping the AXI DMA.\n");
+	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_CR, 1 << AXI_DMA_CR_RESET);
+	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_CR, 1 << AXI_DMA_CR_RESET);
+	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_CR, 0 << AXI_DMA_CR_RESET);
+	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_CR, 0 << AXI_DMA_CR_RESET);
+
+	// stop the axi dma
+	uint32_t cr = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_CR);
+	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_CR, cr & ~(1 << AXI_DMA_CR_RS));
+	cr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_CR);
+	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_CR, cr & ~(1 << AXI_DMA_CR_RS));
+
 
 	//////////////////////////////// MM2S //////////////////////////////////
 	printf("Putting payload on the buffer.\n");
-	// set the axi dma stream src address
+	// set the axi dma stream src/dst address
 	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_SRC_ADDR, HARU_AXI_SRC_ADDR);
-
-	// set the axi dma stream length
-	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_LENGTH, 100);
+	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_DST_ADDR, HARU_AXI_DST_ADDR);
 
 	// load the data into the buffer
 	for (int i = 0; i < 100; i++) {
 		_reg_set(axis_src_v_addr, i, payload[i]);
 	}
 
-	printf("Staring axi dma transfer...\n");
+	printf("Staring axi dma transfer\n");
+
+	// set the axi dma stream length
+	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_LENGTH, 100);
+	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH, 100);
 
 	// start the axi dma transfer
 	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_CR, 0xf001);
+	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_CR, 0xf001);
+
+	printf("Waiting for transfer to be done...\n");
 
 	// busy wait
 	volatile uint32_t mm2s_sr = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_SR);
@@ -97,25 +116,33 @@ int fifo_test() {
 		mm2s_sr = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_SR);
 	}
 
-	printf("AXI DMA transfer done.\n");
+	printf("laoded onto the axi dma...\n");
 
-	//////////////////////////////// S2MM //////////////////////////////////
-	printf("Retrieving payload from the buffer.\n");
-	// set the axi dma stream dst address
-	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_DST_ADDR, HARU_AXI_DST_ADDR);
-
-	// set the axi dma stream length
-	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH, 100);
-
-	// start the axi dma load
-	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_CR, 0xf001);
-	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH, 100);
-	
 	// busy wait
 	volatile uint32_t s2mm_sr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_SR);
 	while (!(s2mm_sr  & (1 << AXI_DMA_SR_IDLE))) {
-		s2mm_sr = _reg_get(axis_dst_v_addr, AXI_DMA_S2MM_SR);
+		s2mm_sr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_SR);
 	}
+
+	printf("AXI DMA transfer done.\n");
+
+	// //////////////////////////////// S2MM //////////////////////////////////
+	// printf("Retrieving payload from the buffer.\n");
+	// // set the axi dma stream dst address
+	// _reg_set(axi_dma_v_addr, AXI_DMA_S2MM_DST_ADDR, HARU_AXI_DST_ADDR);
+
+	// // set the axi dma stream length
+	// _reg_set(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH, 100);
+
+	// // start the axi dma load
+	// _reg_set(axi_dma_v_addr, AXI_DMA_S2MM_CR, 0xf001);
+	// _reg_set(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH, 100);
+	
+	// // busy wait
+	// volatile uint32_t s2mm_sr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_SR);
+	// while (!(s2mm_sr  & (1 << AXI_DMA_SR_IDLE))) {
+	// 	s2mm_sr = _reg_get(axis_dst_v_addr, AXI_DMA_S2MM_SR);
+	// }
 
 	// check the loaded data is correct
 	printf("Error checking.\n");
