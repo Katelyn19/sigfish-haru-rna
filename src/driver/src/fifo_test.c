@@ -35,8 +35,8 @@ int fifo_test() {
 	}
 
 	// initialise the axi dma control space
-	// void * axi_dma_v_addr = (uint32_t *) mmap(NULL, (uint32_t) HARU_AXI_DMA_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, (uint32_t) HARU_AXI_DMA_ADDR_BASE); 
-	void * axi_dma_v_addr = (uint32_t *) mmap(NULL, (uint32_t) HARU_AXI_DMA_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, (uint32_t) HARU_AXI_DMA_ADDR_BASE); 
+	// uint32_t * axi_dma_v_addr = (uint32_t *) mmap(NULL, (uint32_t) HARU_AXI_DMA_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, (uint32_t) HARU_AXI_DMA_ADDR_BASE); 
+	uint32_t * axi_dma_v_addr = (uint32_t *) mmap(NULL, (uint32_t) HARU_AXI_DMA_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, (uint32_t) HARU_AXI_DMA_ADDR_BASE); 
 	if (axi_dma_v_addr == MAP_FAILED) {
 		printf("Error: AXI DMA map failed.\n");
 		close(dev_fd);
@@ -44,14 +44,14 @@ int fifo_test() {
 	}
 
 	// intialise the axi dma stream space
-	void * axis_src_v_addr = (uint32_t *) mmap(NULL, HARU_AXI_BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, HARU_AXI_SRC_ADDR); 
+	uint32_t * axis_src_v_addr = (uint32_t *) mmap(NULL, HARU_AXI_BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, HARU_AXI_SRC_ADDR); 
 	if (axis_src_v_addr  == MAP_FAILED) {
 		printf("Error: AXI DMA source address map failed.\n");
 		close(dev_fd);
 		return -1;
 	}
 
-	void * axis_dst_v_addr = (uint32_t *) mmap(NULL, HARU_AXI_BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, HARU_AXI_SRC_ADDR); 
+	uint32_t * axis_dst_v_addr = (uint32_t *) mmap(NULL, HARU_AXI_BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, HARU_AXI_SRC_ADDR); 
 	if (axis_dst_v_addr == MAP_FAILED) {
 		printf("Error: AXI DMA destination address map failed.\n");
 		close(dev_fd);
@@ -60,7 +60,7 @@ int fifo_test() {
 
 	// initialise the fifo_interconnect - allocate space in mem for the fifo_interconnect to read from
 	printf("Initialising the fifo interconnect.\n");
-	void * fifo_intcn_v_addr = (uint32_t *) mmap(NULL, HARU_DTW_ACCEL_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, HARU_DTW_ACCEL_ADDR_BASE);
+	uint32_t * fifo_intcn_v_addr = (uint32_t *) mmap(NULL, HARU_DTW_ACCEL_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, HARU_DTW_ACCEL_ADDR_BASE);
 	if (fifo_intcn_v_addr == MAP_FAILED) {
 		printf("Error: fifo interconnect map failed.\n");
 		close(dev_fd);
@@ -68,8 +68,10 @@ int fifo_test() {
 	}
 
 	// clear the fifo_interconnect
-	_reg_set(fifo_intcn_v_addr, 0x00, 1);
-	_reg_set(fifo_intcn_v_addr, 0x00, 0);
+	printf("Setting fifo interconnect clear to 1.\n");
+	// _reg_set(fifo_intcn_v_addr, 0x00, 1);
+	printf("Setting fifo interconnect clear to 0.\n");
+	// _reg_set(fifo_intcn_v_addr, 0x00, 0);
 
 	//////////////////////////////// MM2S //////////////////////////////////
 	printf("Putting payload on the buffer.\n");
@@ -137,7 +139,3 @@ int fifo_test() {
 	return 0;
 }
 
-
-int main(int argc, char *argv[]) {
-	fifo_test();
-}
