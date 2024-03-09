@@ -238,7 +238,7 @@ fifo #(
 	.o_fifo_empty		(w_src_fifo_empty),
 	.o_fifo_not_empty	(w_src_fifo_not_empty)
 );
-
+//
 // sink FIFO -> AXIS sink
 fifo_2_axis_adapter #(
 	.AXIS_DATA_WIDTH	(AXIS_DATA_WIDTH)
