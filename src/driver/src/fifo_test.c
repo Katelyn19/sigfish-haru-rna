@@ -14,7 +14,72 @@ Compile with gcc fifo_test.c –o fifo_test
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <string.h>
 
+void dma_mm2s_status(uint32_t *axi_dma_v_addr) {
+	uint32_t status = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_SR);
+	printf("Memory-mapped to stream status (0x%08x@0x%02x):", status, AXI_DMA_MM2S_SR);
+	if (status & 0x00000001)
+		printf(" halted");
+	else
+		printf(" running");
+
+	if (status & 0x00000002)
+		printf(" idle");
+	if (status & 0x00000008)
+		printf(" SGIncld");
+	if (status & 0x00000010)
+		printf(" DMAIntErr");
+	if (status & 0x00000020)
+		printf(" DMASlvErr");
+	if (status & 0x00000040)
+		printf(" DMADecErr");
+	if (status & 0x00000100)
+		printf(" SGIntErr");
+	if (status & 0x00000200)
+		printf(" SGSlvErr");
+	if (status & 0x00000400)
+		printf(" SGDecErr");
+	if (status & 0x00001000)
+		printf(" IOC_Irq");
+	if (status & 0x00002000)
+		printf(" Dly_Irq");
+	if (status & 0x00004000)
+		printf(" Err_Irq");
+	printf("\n");
+}
+
+void dma_s2mm_status(uint32_t *axi_dma_v_addr) {
+	uint32_t status = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_SR);
+	printf("Stream to Memory-mapped status (0x%08x@0x%02x):", status, AXI_DMA_S2MM_SR);
+	if (status & (1 << AXI_DMA_SR_HALTED))
+		printf(" halted");
+	else
+		printf(" running");
+	if (status & (1 << AXI_DMA_SR_IDLE))
+		printf(" idle");
+	if (status & (1 << AXI_DMA_SR_SG_ACT))
+		printf(" SGIncld");
+	if (status & (1 << AXI_DMA_SR_DMA_INT_ERR))
+		printf(" DMAIntErr");
+	if (status & (1 << AXI_DMA_SR_DMA_SLV_ERR))
+		printf(" DMASlvErr");
+	if (status & (1 << AXI_DMA_SR_DMA_DEC_ERR))
+		printf(" DMADecErr");
+	if (status & (1 << AXI_DMA_SR_SG_INT_ERR))
+		printf(" SGIntErr");
+	if (status & (1 << AXI_DMA_SR_SG_SLV_ERR))
+		printf(" SGSlvErr");
+	if (status & (1 << AXI_DMA_SR_SG_DEC_ERR))
+		printf(" SGDecErr");
+	if (status & (1 << AXI_DMA_SR_IOC_IRQ))
+		printf(" IOC_Irq");
+	if (status & (1 << AXI_DMA_SR_DLY_IRQ))
+		printf(" Dly_Irq");
+	if (status & (1 << AXI_DMA_SR_ERR_IRQ))
+		printf(" Err_Irq");
+	printf("\n");
+}
 int cmpfunc(const void * a, const void * b) {
 	return ( *(int*)a - *(int*)b );
 }
@@ -22,10 +87,11 @@ int cmpfunc(const void * a, const void * b) {
 int fifo_test() {
 	printf("Initialising AXI DMA.\n");
 
-	uint32_t payload[100];
+	int payload_len = 5;
+	uint32_t payload[payload_len];
 	
 	// create random payload
-	for (int i = 0; i < 100; i++) {
+	for (int i = 0; i < payload_len; i++) {
 		payload[i] = (uint32_t) rand();
 		printf("%d: %d\n", i, payload[i]);
 	}
@@ -72,11 +138,7 @@ int fifo_test() {
 		return -1;
 	}
 
-	// check status of dma
-	uint32_t status;
-	printf("Checking the status of the axi dma:\n");
-	status = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_SR);
-	printf("Status: %d\n", status);
+	dma_mm2s_status(axi_dma_v_addr);
 
 	// clear the fifo_interconnect
 	printf("Setting fifo interconnect clear to 1.\n");
@@ -89,18 +151,24 @@ int fifo_test() {
 	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_CR, 1 << AXI_DMA_CR_RESET);
 	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_CR, 1 << AXI_DMA_CR_RESET);
 
-	// stop the axi dma
 	uint32_t cr;
+	cr = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_CR);
+	printf("S2MM Control Register: 00x%08x\n", cr);
+	cr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_CR);
+	printf("MM2S Control Register: 00x%08x\n", cr);
+
+	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_CR, cr & ~(1 << AXI_DMA_CR_IOC_IRQ_EN));
+	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_CR, cr & ~(1 << AXI_DMA_CR_IOC_IRQ_EN));
+
+	// stop the axi dma
 	cr = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_CR);
 	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_CR, cr & ~(1 << AXI_DMA_CR_RS));
 
 	cr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_CR);
 	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_CR, cr & ~(1 << AXI_DMA_CR_RS));
 
-	// check status of dma
-	printf("Checking the status of the axi dma:\n");
-	status = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_SR);
-	printf("Status: %d\n", status);
+	dma_mm2s_status(axi_dma_v_addr);
+	dma_s2mm_status(axi_dma_v_addr);
 
 	//////////////////////////////// MM2S //////////////////////////////////
 	printf("Putting payload on the buffer.\n");
@@ -108,40 +176,81 @@ int fifo_test() {
 	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_SRC_ADDR, HARU_AXI_SRC_ADDR);
 	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_DST_ADDR, HARU_AXI_DST_ADDR);
 
-	// load the data into the buffer
-	for (int i = 0; i < 100; i++) {
-		_reg_set(axis_src_v_addr, i, payload[i]);
-	}
+	// // load the data into the buffer
+	// for (int i = 0; i < payload_len; i += 8) {
+	// 	_reg_set(axis_src_v_addr, i, payload[i]);
+	// }
 
+	// memcpy(axis_src_v_addr, payload, payload_len * sizeof(int32_t));
+
+	// verify payload
+	uint32_t data_display;
+	printf("Verifying Payload at src address:\n");
+	for (int i = 0; i < payload_len*4; i += 4) {
+		data_display = _reg_get(axis_src_v_addr, i);
+		printf("%d: %d\n", i/4, data_display);
+	}
 	printf("Staring axi dma transfer\n");
 
-	// start the axi dma transfer
+	// start flag the axi dma transfer
 	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_CR, 0xf001);
 	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_CR, 0xf001);
 
-	// set the axi dma stream length
-	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_LENGTH, 100*4);
-	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH, 100*4);
+	// set the axi dma stream length - this begins the transfer.
+	_reg_set(axi_dma_v_addr, AXI_DMA_MM2S_LENGTH, payload_len*4);
+	_reg_set(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH, payload_len*4);
+
+	dma_mm2s_status(axi_dma_v_addr);
+	dma_s2mm_status(axi_dma_v_addr);
+
+	cr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH);
+	printf("S2MM Length Register: 00x%08x = %d (decimal)\n", cr, cr);
+
+	cr = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_LENGTH);
+	printf("MM2S Length Register: 00x%08x = %d (decimal)\n", cr, cr);
 
 	printf("Waiting for transfer to be done...\n");
 
 	// busy wait
 	volatile uint32_t mm2s_sr = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_SR);
-	// while (!(mm2s_sr & (1 << AXI_DMA_SR_IDLE))) {
-	while (!(mm2s_sr)) {
+	while (!(mm2s_sr & (1 << AXI_DMA_SR_IDLE))) {
+	// while (!(mm2s_sr)) {
 		mm2s_sr = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_SR);
 	}
 
 	printf("laoded onto the axi dma...\n");
 
+	dma_mm2s_status(axi_dma_v_addr);
+	dma_s2mm_status(axi_dma_v_addr);
+
+	cr = _reg_get(axi_dma_v_addr, AXI_DMA_MM2S_LENGTH);
+	printf("\nBytes written:\n");
+	printf("MM2S Length Register: 00x%08x\n", cr);
+	printf("MM2S Length Register: %d (decimal)\n\n", cr);
+
 	// busy wait
+	int counter = 0;
 	volatile uint32_t s2mm_sr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_SR);
-	// while (!(s2mm_sr  & (1 << AXI_DMA_SR_IDLE))) {
-	while (!(s2mm_sr)) {
+	while (!(s2mm_sr  & (1 << AXI_DMA_SR_IDLE))) {
+	// while (!(s2mm_sr)) {
 		s2mm_sr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_SR);
+		// if (counter == payload_len00) {
+		// 	dma_s2mm_status(axi_dma_v_addr);
+		// 	counter = 0;
+		// } else {
+		// 	counter++;
+		// }
 	}
 
 	printf("AXI DMA transfer done.\n");
+
+	cr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH);
+	printf("\nBytes written:\n");
+	printf("S2MM Length Register: 00x%08x\n", cr);
+	printf("S2MM Length Register: %d (decimal)\n\n", cr);
+
+	dma_mm2s_status(axi_dma_v_addr);
+	dma_s2mm_status(axi_dma_v_addr);
 
 	// //////////////////////////////// S2MM //////////////////////////////////
 	// printf("Retrieving payload from the buffer.\n");
@@ -149,11 +258,11 @@ int fifo_test() {
 	// _reg_set(axi_dma_v_addr, AXI_DMA_S2MM_DST_ADDR, HARU_AXI_DST_ADDR);
 
 	// // set the axi dma stream length
-	// _reg_set(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH, 100);
+	// _reg_set(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH, payload_len);
 
 	// // start the axi dma load
 	// _reg_set(axi_dma_v_addr, AXI_DMA_S2MM_CR, 0xf001);
-	// _reg_set(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH, 100);
+	// _reg_set(axi_dma_v_addr, AXI_DMA_S2MM_LENGTH, payload_len);
 	
 	// // busy wait
 	// volatile uint32_t s2mm_sr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_SR);
@@ -166,9 +275,9 @@ int fifo_test() {
 	int error = 0;
 	uint32_t data;
 	uint32_t found = 0;
-	for (int i = 0; i < 100; i++) {
+	for (int i = 0; i < payload_len; i++) {
 		data = _reg_get(axis_src_v_addr, i);
-		for (int j = 0; j < 100; j++) {
+		for (int j = 0; j < payload_len; j++) {
 			if (data == payload[j]) {
 				found = 1;
 			}
