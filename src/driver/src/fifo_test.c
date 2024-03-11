@@ -181,14 +181,14 @@ int fifo_test() {
 	// 	_reg_set(axis_src_v_addr, i, payload[i]);
 	// }
 
-	// memcpy(axis_src_v_addr, payload, payload_len * sizeof(int32_t));
+	memcpy(axis_src_v_addr, (void *) payload, payload_len * sizeof(uint32_t));
 
 	// verify payload
 	uint32_t data_display;
 	printf("Verifying Payload at src address:\n");
 	for (int i = 0; i < payload_len*4; i += 4) {
 		data_display = _reg_get(axis_src_v_addr, i);
-		printf("%d: %d\n", i/4, data_display);
+		printf("%d: %d\n", i/8, data_display);
 	}
 	printf("Staring axi dma transfer\n");
 
@@ -229,7 +229,6 @@ int fifo_test() {
 	printf("MM2S Length Register: %d (decimal)\n\n", cr);
 
 	// busy wait
-	int counter = 0;
 	volatile uint32_t s2mm_sr = _reg_get(axi_dma_v_addr, AXI_DMA_S2MM_SR);
 	while (!(s2mm_sr  & (1 << AXI_DMA_SR_IDLE))) {
 	// while (!(s2mm_sr)) {
@@ -274,19 +273,11 @@ int fifo_test() {
 	printf("Error checking.\n");
 	int error = 0;
 	uint32_t data;
-	uint32_t found = 0;
 	for (int i = 0; i < payload_len; i++) {
-		data = _reg_get(axis_src_v_addr, i);
-		for (int j = 0; j < payload_len; j++) {
-			if (data == payload[j]) {
-				found = 1;
-			}
-		}
-
-		if (found == 0) {
+		data = _reg_get(axis_src_v_addr, i*4);
+		if (data != payload[i]) {
 			error++;
-		} else {
-			found = 0;
+			printf("data mismatch @ payload[%d]: %d %d\n", i, data, payload[i]);
 		}
 	}
 

@@ -236,7 +236,10 @@ fifo #(
 	.i_fifo_r_stb		(w_src_fifo_r_stb),
 	.o_fifo_r_data		(w_src_fifo_r_data),
 	.o_fifo_empty		(w_src_fifo_empty),
-	.o_fifo_not_empty	(w_src_fifo_not_empty)
+	.o_fifo_not_empty	(w_src_fifo_not_empty),
+
+	.i_fifo_last_w		(SRC_AXIS_tlast),
+	.o_fifo_last_r		(w_sink_fifo_r_last)
 );
 //
 // sink FIFO -> AXIS sink
@@ -246,7 +249,7 @@ fifo_2_axis_adapter #(
 	.o_fifo_r_stb		(w_src_fifo_r_stb),
 	.i_fifo_data		(w_src_fifo_r_data),
 	.i_fifo_not_empty	(w_src_fifo_not_empty),
-	.i_fifo_last		(w_src_fifo_empty),
+	.i_fifo_last		(w_sink_fifo_r_last),
 
 	.o_axis_tuser		(SINK_AXIS_tuser),
 	.o_axis_tdata		(SINK_AXIS_tdata),

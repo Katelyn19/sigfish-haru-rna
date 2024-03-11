@@ -47,7 +47,10 @@ module fifo #(
     input  wire                 i_fifo_r_stb,
     output wire [WIDTH-1:0]     o_fifo_r_data,
     output wire                 o_fifo_empty,
-    output wire                 o_fifo_not_empty
+    output wire                 o_fifo_not_empty,
+
+    input  wire                 i_fifo_last_w,
+    output reg                  o_fifo_last_r
 );
 
 /* ===============================
@@ -60,6 +63,7 @@ reg [WIDTH-1:0] MEM [0:DEPTH-1];
 reg [$clog2(DEPTH)-1:0] write_ptr;
 reg [$clog2(DEPTH)-1:0] read_ptr;
 reg [$clog2(DEPTH)-1:0] r_read_ptr;
+reg fifo_last;
 
 /* ===============================
  * asynchronous logic
@@ -105,6 +109,8 @@ always @ ( posedge clk ) begin
         write_ptr       <=  0;
         read_ptr        <=  0;
         r_read_ptr      <=  (DEPTH - 1);
+        o_fifo_last_r   <=  1'b0;
+        fifo_last       <=  1'b0;
     end else begin
         // Write pointer
         if (i_fifo_w_stb && o_fifo_not_full) begin
@@ -115,6 +121,24 @@ always @ ( posedge clk ) begin
         if (i_fifo_r_stb && o_fifo_not_empty) begin
             r_read_ptr  <= read_ptr;
             read_ptr    <= read_ptr + 1;
+        end
+
+        // fifo last signal
+        if (i_fifo_last_w) begin
+            fifo_last <= 1'b1;
+        end
+        else if (fifo_last && i_fifo_w_stb) begin
+            fifo_last <= 1'b0;
+        end
+        else begin
+            fifo_last <= fifo_last;
+        end
+
+        if (i_fifo_r_stb && ((read_ptr + 1) == write_ptr) && (fifo_last || i_fifo_last_w)) begin
+            o_fifo_last_r <= 1'b1;
+        end
+        else begin
+            o_fifo_last_r <= 1'b0;
         end
     end
 end
