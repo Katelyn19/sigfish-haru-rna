@@ -2,7 +2,7 @@
 author: Katelyn Mak
 date: 28/2/2024
 
-This file loads a randomly generated payload onto the axi dma and expects it to be returned exactly the same.
+This program loads a randomly generated payload onto the axi dma and expects it to be returned exactly the same.
 
 Compile with gcc fifo_test.c –o fifo_test
 */
