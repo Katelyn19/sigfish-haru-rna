@@ -29,6 +29,11 @@ int axi_mcdma_fifo_test(int payload_len) {
     }
 
     // Initialise MCDMA
+    // Enable Channels
+
+    // Map Cursor Descriptor
+
+    // program the CHANNEL.fetch bit?
 }
 
 void main(void) {
