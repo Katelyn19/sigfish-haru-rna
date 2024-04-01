@@ -3,7 +3,7 @@ CC       ?= gcc
 CXX      ?= g++
 LANGFLAG = -x c++
 CPPFLAGS += -Iinclude/ -I/lib/modules/5.10.0-xilinx-v2021.1/extra/dmaproxy/ -Iusr/
-CFLAGS   += -g -Wall -O2 -std=c++11
+CFLAGS   += -g -Wall -O2
 LDFLAGS  += $(LIBS) -lpthread -lz -rdynamic -pthread
 BUILD_DIR = build
 XIL_DIR = lib/modules/5.10.0-xilinx-v2021.1/extra/dmaproxy

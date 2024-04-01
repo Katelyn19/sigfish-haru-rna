@@ -1,0 +1,39 @@
+CC ?= g++
+ODIR = build
+IDIR = ../../common/src/
+LDIR = ../../../../lib
+LIBPATHS = /bsp/standalone/src/common/ \
+	/sw_apps/zynqmp_fsbl/misc/ \
+	/bsp/standalone/src/arm/cortexa9/ \
+	/bsp/standalone/src/arm/common/gcc/
+
+CFLAGS += -I$(IDIR) $(addprefix -I$(LDIR), $(LIBPATHS)) -g -Wall -O2
+
+DEPS = xmcdma.h \
+	xmcdma_hw.h
+
+OBJ = $(ODIR)/xil_printf.o \
+	$(ODIR)/xmcdma_sinit.o \
+	$(ODIR)/xmcdma.o \
+	$(ODIR)/xmcdma_g.o
+
+.PHONY: clean
+
+mcdma: $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $^
+
+$(ODIR)/xil_printf.o: xil_printf.c xil_printf.h
+	$(CC) $(CFLAGS) $< -c -o $@
+
+$(ODIR)/xmcdma_sinit.o: xmcdma_sinit.c
+	$(CC) $(CFLAGS) $< -c -o $@
+
+$(ODIR)/xmcdma.o: xmcdma.c xmcdma.h
+	$(CC) $(CFLAGS) $< -c -o $@
+
+$(ODIR)/xmcdma_g.o: xmcdma_g.c
+	$(CC) $(CFLAGS) $< -c -o $@
+
+clean:
+	rm -f build/*.o
+	rm -f ./*.o

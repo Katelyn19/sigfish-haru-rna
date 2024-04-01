@@ -1,0 +1,53 @@
+# Copyright (C) 2023 Advanced Micro Devices, Inc.  All rights reserved.
+set (_cflags "${CMAKE_C_FLAGS} ${APP_EXTRA_C_FLAGS} -fdata-sections -ffunction-sections")
+set (_fw_dir "${APPS_SHARE_DIR}")
+
+collector_list (_list PROJECT_INC_DIRS)
+collector_list (_app_list APP_INC_DIRS)
+include_directories (${_list} ${_app_list} ${CMAKE_CURRENT_SOURCE_DIR})
+
+collector_list (_list PROJECT_LIB_DIRS)
+collector_list (_app_list APP_LIB_DIRS)
+link_directories (${_list} ${_app_list})
+
+get_property (_linker_opt GLOBAL PROPERTY APP_LINKER_OPT)
+collector_list (_deps PROJECT_LIB_DEPS)
+
+find_library(OPENAMP_LIB NAMES open_amp HINTS "${OPENAMP_DIR}/lib")
+
+get_property (OPENAMP_APP_NAME GLOBAL PROPERTY OPENAMP_APP_NAME)
+if(OPENAMP_APP_NAME STREQUAL "rpc_demo")
+  set(_app rpc_demo)
+elseif(OPENAMP_APP_NAME STREQUAL "echo")
+  set (_app rpmsg-echo)
+elseif(OPENAMP_APP_NAME STREQUAL "matrix_multiply")
+  set (_app matrix_multiplyd)
+endif()
+
+include(CheckSymbolExists)
+
+check_symbol_exists(versal "bspconfig.h" IS_VERSAL)
+check_symbol_exists(VERSAL_NET "xparameters_ps.h" IS_VERSAL_NET)
+
+if (IS_VERSAL)
+    set (SOC_FAMILY "versal")
+elseif(IS_VERSAL_NET)
+    set (SOC_FAMILY "versalnet")
+    add_definitions(-DIPI_IRQ_VECT_ID=90)
+    add_definitions(-DPOLL_BASE_ADDR=0xEB340000)
+    add_definitions(-DIPI_CHN_BITMASK=0x20)
+else()
+    set (SOC_FAMILY "zynqmp")
+    add_definitions(-DXPAR_XIPIPSU_0_INT_ID=65)
+    add_definitions(-DXPAR_XIPIPSU_0_BASE_ADDRESS=0xff310000)
+endif()
+
+collector_list (_sources APP_COMMON_SOURCES)
+list (APPEND _sources "${CMAKE_CURRENT_SOURCE_DIR}/${_app}.c")
+
+set (executable_name ${CMAKE_PROJECT_NAME})
+
+add_executable (${executable_name}.elf ${_sources})
+set_source_files_properties(${_sources} PROPERTIES COMPILE_FLAGS "${_cflags}")
+target_link_libraries(${executable_name}.elf -Wl,-Map=${executable_name}.map -Wl,--gc-sections ${_linker_opt} -Wl,--start-group ${OPENAMP_LIB} ${_deps} -Wl,--end-group)
+install (TARGETS ${executable_name}.elf RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

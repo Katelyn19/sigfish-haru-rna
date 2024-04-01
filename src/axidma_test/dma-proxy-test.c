@@ -55,6 +55,7 @@
 #include <time.h>
 #include <errno.h>
 #include <sys/param.h>
+#include <string.h>
 
 #include "dma-proxy.h"
 
@@ -112,8 +113,9 @@ static uint64_t get_posix_clock_time_usec ()
  * The following function is the transmit thread to allow the transmit and the receive channels to be
  * operating simultaneously. Some of the ioctl calls are blocking so that multiple threads are required.
  */
-void tx_thread(struct channel *channel_ptr)
+void * tx_thread(void *channel_ptr_void)
 {
+	struct channel *channel_ptr = (struct channel *) channel_ptr_void;
 	int i, counter = 0, buffer_id, in_progress_count = 0;
 	int stop_in_progress = 0;
 
@@ -153,7 +155,7 @@ void tx_thread(struct channel *channel_ptr)
 		 */
 		ioctl(channel_ptr->fd, FINISH_XFER, &buffer_id);
 		if (channel_ptr->buf_ptr[buffer_id].status != PROXY_NO_ERROR)
-			printf("Proxy tx transfer error\n");
+			fprintf(stderr,"Proxy tx transfer error\n");
 
 		/* Keep track of how many transfers are in progress and how many completed
 		 */
@@ -204,10 +206,13 @@ end_tx_loop0:
 		buffer_id += BUFFER_INCREMENT;
 		buffer_id %= TX_BUFFER_COUNT;
 	}
+
+	return NULL;
 }
 
-void rx_thread(struct channel *channel_ptr)
+void * rx_thread(void *channel_ptr_void)
 {
+	struct channel *channel_ptr = (struct channel *) channel_ptr_void;
 	int in_progress_count = 0, buffer_id = 0;
 	int rx_counter = 0;
 
@@ -239,7 +244,7 @@ void rx_thread(struct channel *channel_ptr)
 		ioctl(channel_ptr->fd, FINISH_XFER, &buffer_id);
 
 		if (channel_ptr->buf_ptr[buffer_id].status != PROXY_NO_ERROR) {
-			printf("Proxy rx transfer error, # transfers %d, # completed %d, # in progress %d\n",
+			fprintf(stderr,"Proxy rx transfer error, # transfers %d, # completed %d, # in progress %d\n",
 						num_transfers, rx_counter, in_progress_count);
 			exit(1);
 		}
@@ -248,11 +253,11 @@ void rx_thread(struct channel *channel_ptr)
 		 * A unique value in the buffers is used across all transfers
 		 */
 		if (verify) {
-			unsigned int *buffer = &channel_ptr->buf_ptr[buffer_id].buffer;
+			unsigned int *buffer = channel_ptr->buf_ptr[buffer_id].buffer;
 			int i;
 			for (i = 0; i < 1; i++) // test_size / sizeof(unsigned int); i++) this is slow
 				if (buffer[i] != i + rx_counter) {
-					printf("buffer not equal, index = %d, data = %d expected data = %d\n", i,
+					fprintf(stderr,"buffer not equal, index = %d, data = %d expected data = %d\n", i,
 						buffer[i], i + rx_counter);
 					break;
 				}
@@ -290,6 +295,8 @@ void rx_thread(struct channel *channel_ptr)
 		buffer_id %= RX_BUFFER_COUNT;
 
 	}
+
+	return NULL;
 }
 
 /*******************************************************************************************************************/
@@ -330,15 +337,14 @@ int main(int argc, char *argv[])
 	int i;
 	uint64_t start_time, end_time, time_diff;
 	int mb_sec;
-	int buffer_id = 0;
 	int max_channel_count = MAX(TX_CHANNEL_COUNT, RX_CHANNEL_COUNT);
 
-	printf("DMA proxy test\n");
+	fprintf(stderr,"DMA proxy test\n");
 
 	signal(SIGINT, sigint);
 
 	if ((argc != 3) && (argc != 4)) {
-		printf("Usage: dma-proxy-test <# of DMA transfers to perform> <# of bytes in each transfer in KB (< 1MB)> <optional verify, 0 or 1>\n");
+		fprintf(stderr,"Usage: dma-proxy-test <# of DMA transfers to perform> <# of bytes in each transfer in KB (< 1MB)> <optional verify, 0 or 1>\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -359,7 +365,7 @@ int main(int argc, char *argv[])
 	 */
 	if (argc == 4)
 		verify = atoi(argv[3]);
-	printf("Verify = %d\n", verify);
+	fprintf(stderr,"Verify = %d\n", verify);
 
 	/* Open the file descriptors for each tx channel and map the kernel driver memory into user space */
 
@@ -368,13 +374,13 @@ int main(int argc, char *argv[])
 		strcat(channel_name, tx_channel_names[i]);
 		tx_channels[i].fd = open(channel_name, O_RDWR);
 		if (tx_channels[i].fd < 1) {
-			printf("Unable to open DMA proxy device file: %s\r", channel_name);
+			fprintf(stderr, "Unable to open DMA proxy device file: %s\n", channel_name);
 			exit(EXIT_FAILURE);
 		}
 		tx_channels[i].buf_ptr = (struct channel_buffer *)mmap(NULL, sizeof(struct channel_buffer) * TX_BUFFER_COUNT,
 										PROT_READ | PROT_WRITE, MAP_SHARED, tx_channels[i].fd, 0);
 		if (tx_channels[i].buf_ptr == MAP_FAILED) {
-			printf("Failed to mmap tx channel\n");
+			fprintf(stderr,"Failed to mmap tx channel\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -386,13 +392,13 @@ int main(int argc, char *argv[])
 		strcat(channel_name, rx_channel_names[i]);
 		rx_channels[i].fd = open(channel_name, O_RDWR);
 		if (rx_channels[i].fd < 1) {
-			printf("Unable to open DMA proxy device file: %s\r", channel_name);
+			fprintf(stderr,"Unable to open DMA proxy device file: %s\r", channel_name);
 			exit(EXIT_FAILURE);
 		}
 		rx_channels[i].buf_ptr = (struct channel_buffer *)mmap(NULL, sizeof(struct channel_buffer) * RX_BUFFER_COUNT,
 										PROT_READ | PROT_WRITE, MAP_SHARED, rx_channels[i].fd, 0);
 		if (rx_channels[i].buf_ptr == MAP_FAILED) {
-			printf("Failed to mmap rx channel\n");
+			fprintf(stderr,"Failed to mmap rx channel\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -413,9 +419,9 @@ int main(int argc, char *argv[])
 	time_diff = end_time - start_time;
 	mb_sec = ((1000000 / (double)time_diff) * (num_transfers * max_channel_count * (double)test_size)) / 1000000;
 
-	printf("Time: %d microseconds\n", time_diff);
-	printf("Transfer size: %d KB\n", (long long)(num_transfers) * (test_size / 1024) * max_channel_count);
-	printf("Throughput: %d MB / sec \n", mb_sec);
+	fprintf(stderr,"Time: %ld microseconds\n", time_diff);
+	fprintf(stderr,"Transfer size: %lld KB\n", (long long)(num_transfers) * (test_size / 1024) * max_channel_count);
+	fprintf(stderr,"Throughput: %d MB / sec \n", mb_sec);
 
 	/* Clean up all the channels before leaving */
 
@@ -429,7 +435,7 @@ int main(int argc, char *argv[])
 		close(rx_channels[i].fd);
 	}
 
-	printf("DMA proxy test complete\n");
+	fprintf(stderr,"DMA proxy test complete\n");
 
 	return 0;
 }
