@@ -10,6 +10,16 @@ This header file defines the register addresses and values to control the MCDMA.
 #include <stdint.h>
 
 /*
+    AXI MCDMA Buffer Address Space
+*/
+#define AXI_MCDMA_BUF_ADDR_BASE                     0xa0000000
+#define AXI_MCDMA_BUF_SIZE                          0xffff
+#define AXI_MCDMA_BUF_SRC_ADDR                      0x10000000
+#define AXI_MCDMA_BUF_DST_ADDR                      0x20000000
+
+#define AXI_MCDMA_BUF_INIT_ERROR     0x01
+
+/*
     AXI Multichannel DMA MM2S
 */
 // MM2S Address Space
@@ -35,7 +45,7 @@ This header file defines the register addresses and values to control the MCDMA.
 #define AXI_MCDMA_MM2S_CH1PKTCOUNT_STAT             0x058   // CH1 Packet Processed count
 
 // MM2S Common Control Register
-#define AXI_MCDMA_MM2S_RS                           0x000   // Run = 1, Stop = 0
+#define AXI_MCDMA_MM2S_RS                           0x001   // Run = 1, Stop = 0
 #define AXI_MCDMA_MM2S_RESET                        0x004   // Reset in progress = 1, Reset not in progress = 0
 
 // MM2S Common Status Register

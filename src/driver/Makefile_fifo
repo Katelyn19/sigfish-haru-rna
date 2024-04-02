@@ -1,4 +1,3 @@
-
 CC       ?= gcc
 CXX      ?= g++
 LANGFLAG = -x c++
@@ -11,8 +10,8 @@ ifeq ($(zstd),1)
 LDFLAGS		+= -lzstd
 endif
 
-BINARY = axi_mcdma_fifo_test
-OBJ = $(BUILD_DIR)/axi_mcdma_fifo_test.o \
+BINARY = fifo_test
+OBJ = $(BUILD_DIR)/fifo_test.o \
 	$(BUILD_DIR)/main.o \
 
 PREFIX = /usr/local
@@ -28,11 +27,11 @@ endif
 $(BINARY): $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-$(BUILD_DIR)/main.o: src/main.c include/axi_mcdma_fifo_test.h
+$(BUILD_DIR)/main.o: src/main.c include/fifo_test.h
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $(LANGFLAG) $< -c -o $@
 
 #haru things
-$(BUILD_DIR)/axi_mcdma_fifo_test.o: src/axi_mcdma_fifo_test.c
+$(BUILD_DIR)/fifo_test.o: src/fifo_test.c
 	$(CXX) $(CFLAGS) $(CPPFLAGS) $(LANGFLAG) $< -c -o $@
 
 clean:
