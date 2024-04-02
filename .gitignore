@@ -1,3 +1,4 @@
 src/driver/fifo_test
 src/driver/fifo_test.sh
 HARU/
+.vscode/
