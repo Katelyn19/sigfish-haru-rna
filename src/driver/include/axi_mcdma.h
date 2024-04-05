@@ -16,6 +16,7 @@ This header file defines the register addresses and values to control the MCDMA.
 #define AXI_MCDMA_BUF_SIZE                          0xffff
 #define AXI_MCDMA_BUF_SRC_ADDR                      0x10000000
 #define AXI_MCDMA_BUF_DST_ADDR                      0x20000000
+#define AXI_MCDMA_BUF_DESC_CHAIN_ADDR               0x21000000 // todo: find a more suitable address
 
 #define AXI_MCDMA_BUF_INIT_ERROR     0x01
 
@@ -49,8 +50,14 @@ This header file defines the register addresses and values to control the MCDMA.
 #define AXI_MCDMA_MM2S_RESET                        0x004   // Reset in progress = 1, Reset not in progress = 0
 
 // MM2S Common Status Register
-#define AXI_MCDMA_MM2S_HALTED                       0x000   // Halted = 1, Running = 0
-#define AXI_MCDMA_MM2S_IDLE                         0x004   // Idle = = 1, Not Idle = 0
+#define AXI_MCDMA_MM2S_HALTED                       0x001   // Halted = 1, Running = 0
+#define AXI_MCDMA_MM2S_IDLE                         0x002   // Idle = = 1, Not Idle = 0
+
+// MM2S Channel Control Register
+#define AXI_MCDMA_MM2S_CH1RS                        0x001   // Run = 1
+
+// MM2S Channel Status Register
+#define AXI_MCDMA_MM2S_CHIDLE                       0x001   // Idle = = 1, Not Idle = 0
 
 // MM2S Error Register
 #define AXI_MCDMA_MM2S_DMA_INTR_ERR                 0x00    // MCDMA Internal Error
@@ -83,5 +90,15 @@ This header file defines the register addresses and values to control the MCDMA.
 #define AXI_MCDMA_S2MM_CH1TAILDESC_MSB              0x554   // CH1 Tail Descriptor (MSB)
 #define AXI_MCDMA_S2MM_CH1PKTDROP_STAT              0x558   // CH1 Packet Drop Stat
 #define AXI_MCDMA_S2MM_CH1PKTCOUNT_STAT             0x55C   // CH1 Packet Processed count
+
+/*
+    Scatter Gather Buffer Descriptor Addresses
+*/
+#define AXI_MCDMA_MM2S_BD_NEXT_DESC_LSB             0x00 // Next descriptor pointer
+#define AXI_MCDMA_MM2S_BD_NEXT_DESC_MSB             0x04 // Next descriptor pointer
+#define AXI_MCDMA_MM2S_BD_BUF_ADDR_LSB              0x08 // Buffer descriptor address
+#define AXI_MCDMA_MM2S_BD_BUF_ADDR_MSB              0x08 // Buffer descriptor address
+#define AXI_MCDMA_MM2S_BD_CONTROL               0x14 // Control Information for BD
+#define AXI_MCDMA_MM2S_BD_CONTROL_SIDEBAND      0x18 // Control Information for BD
 
 #endif
