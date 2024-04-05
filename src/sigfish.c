@@ -851,7 +851,7 @@ void dtw_fpga(core_t* core,db_t* db){
 
             if (rna) {
                 db->aln[i].pos_st += core->ref->ref_st_offset[ref_id];
-                db->aln[i].pos_end += core->ref->ref_st_offset[ref_id];            
+                db->aln[i].pos_end += core->ref->ref_st_offset[ref_id];
             }
 
             if (db->aln[i].pos_st < 0) {
