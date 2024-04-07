@@ -151,5 +151,6 @@ struct mcdma_bd {
 #define AXI_MCDMA_MM2S_BD_BUF_ADDR_MSB              0x08 // Buffer descriptor address
 #define AXI_MCDMA_MM2S_BD_CONTROL               0x14 // Control Information for BD
 #define AXI_MCDMA_MM2S_BD_CONTROL_SIDEBAND      0x18 // Control Information for BD
+#define AXI_MCDMA_MM2S_BD_STATUS                    0x1C // Control Information for BD
 
 #endif
