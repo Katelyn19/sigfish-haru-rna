@@ -1,18 +1,14 @@
 
 CC       ?= gcc
-CXX      ?= g++
-LANGFLAG = -x c++
+LANGFLAG = -x c
 CPPFLAGS += -Iinclude/
-CFLAGS   += -g -Wall -O2 -std=c++11
-LDFLAGS  += $(LIBS) -lpthread -lz -rdynamic
+CFLAGS   += -g -Wall -O2
+LDFLAGS  += $(LIBS)
 BUILD_DIR = build
 
-ifeq ($(zstd),1)
-LDFLAGS		+= -lzstd
-endif
 
-BINARY = axi_mcdma_fifo_test
-OBJ = $(BUILD_DIR)/axi_mcdma_fifo_test.o \
+BINARY = mcdma_test
+OBJ = $(BUILD_DIR)/mcdma_test.o \
 	$(BUILD_DIR)/main.o \
 
 PREFIX = /usr/local
@@ -28,12 +24,12 @@ endif
 $(BINARY): $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-$(BUILD_DIR)/main.o: src/main.c include/axi_mcdma_fifo_test.h
-	$(CXX) $(CFLAGS) $(CPPFLAGS) $(LANGFLAG) $< -c -o $@
+$(BUILD_DIR)/main.o: src/main.c include/mcdma_test.h
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LANGFLAG) $< -c -o $@
 
 #haru things
-$(BUILD_DIR)/axi_mcdma_fifo_test.o: src/axi_mcdma_fifo_test.c
-	$(CXX) $(CFLAGS) $(CPPFLAGS) $(LANGFLAG) $< -c -o $@
+$(BUILD_DIR)/mcdma_test.o: src/mcdma_test.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LANGFLAG) $< -c -o $@
 
 clean:
 	rm -rf $(BINARY) $(BUILD_DIR)/*.o

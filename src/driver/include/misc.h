@@ -29,6 +29,11 @@ SOFTWARE. */
 #include <stdio.h>
 #include <stdint.h>
 
+#define INFO_PREFIX "[%s::INFO]\033[1;34m "
+#define ERROR_PREFIX "[%s::ERROR]\033[1;31m "
+#define NO_COLOUR "\033[0m"
+#define RED_COLOUR "\033[0;31m"
+
 // TODO: add defines of error codes
 
 /*
@@ -39,10 +44,12 @@ SOFTWARE. */
 #define _reg_get(BaseAddress, RegOffset) \
     *(volatile uint32_t*)((BaseAddress) + (RegOffset >> 2))
 
-#define HARU_INFO(msg) \
-    fprintf(stderr, "INFO: %s:%d: ", __FILE__, __LINE__); \
-    fprintf(stderr, "%s", msg);
+#define INFO(msg, ...) \
+    fprintf(stderr, INFO_PREFIX msg NO_COLOUR "\n", __func__, __VA_ARGS__); 
 
-// uint32_t haru_errno = 0;
+#define ERROR(msg, ...) \
+    fprintf(stderr, ERROR_PREFIX msg RED_COLOUR \
+        " At %s:%d\n", \
+        __func__, __VA_ARGS__, __FILE__, __LINE__ - 1);
 
 #endif // MISC_H

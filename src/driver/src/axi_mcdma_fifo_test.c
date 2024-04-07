@@ -64,14 +64,14 @@ int axi_mcdma_fifo_test(int payload_len) {
 	}
 
 	// axi mcdma destination addr
-	uint32_t * axis_buf_desc_mm2s_v_addr = (uint32_t *) mmap(NULL, AXI_MCDMA_BUF_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, AXI_MCDMA_MM2S_BUF_DESC_CHAIN_ADDR); 
+	uint32_t * axis_buf_desc_mm2s_v_addr = (uint32_t *) mmap(NULL, AXI_MCDMA_BUF_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, AXI_MCDMA_MM2S_BD_CHAIN_ADDR); 
 	if (axis_buf_desc_mm2s_v_addr == MAP_FAILED) {
 		printf("Error: AXI DMA buffer descriptor mm2s chain address map failed.\n");
 		close(dev_fd);
 		return -1;
 	}
 
-	uint32_t * axis_buf_desc_s2mm_v_addr = (uint32_t *) mmap(NULL, AXI_MCDMA_BUF_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, AXI_MCDMA_S2MM_BUF_DESC_CHAIN_ADDR); 
+	uint32_t * axis_buf_desc_s2mm_v_addr = (uint32_t *) mmap(NULL, AXI_MCDMA_BUF_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, AXI_MCDMA_S2MM_BD_CHAIN_ADDR); 
 	if (axis_buf_desc_s2mm_v_addr == MAP_FAILED) {
 		printf("Error: AXI DMA buffer descriptor s2mm chain address map failed.\n");
 		close(dev_fd);
@@ -83,14 +83,13 @@ int axi_mcdma_fifo_test(int payload_len) {
 	memcpy(axis_src_v_addr, (void *) payload, payload_len * sizeof(uint32_t));
 
 	// Create descriptor chain
-	_reg_set(axis_buf_desc_mm2s_v_addr, AXI_MCDMA_MM2S_BD_NEXT_DESC_LSB, AXI_MCDMA_MM2S_BUF_DESC_CHAIN_ADDR);
+	_reg_set(axis_buf_desc_mm2s_v_addr, AXI_MCDMA_MM2S_BD_NEXT_DESC_LSB, AXI_MCDMA_MM2S_BD_CHAIN_ADDR);
 	_reg_set(axis_buf_desc_mm2s_v_addr, AXI_MCDMA_MM2S_BD_BUF_ADDR_LSB, AXI_MCDMA_BUF_SRC_ADDR);
 	_reg_set(axis_buf_desc_mm2s_v_addr, AXI_MCDMA_MM2S_BD_STATUS, 0x00000000);
-	// _reg_set(axis_buf_desc_mm2s_v_addr, AXI_MCDMA_MM2S_BD_CONTROL, (uint32_t) (payload_len * sizeof(uint32_t)) | 0xc0000000);
-	_reg_set(axis_buf_desc_mm2s_v_addr, AXI_MCDMA_MM2S_BD_CONTROL, (uint32_t) ((uint32_t) payload_len | 0xc0000000));
+	_reg_set(axis_buf_desc_mm2s_v_addr, AXI_MCDMA_MM2S_BD_CONTROL, (uint32_t) (payload_len * sizeof(uint32_t)) | 0xc0000000);
 	fprintf(stderr, "mm2s Buffer Length: 0x%08x\n", (uint32_t) (payload_len*2 * sizeof(uint16_t)) | 0xc0000000);
 
-	_reg_set(axis_buf_desc_s2mm_v_addr, AXI_MCDMA_MM2S_BD_NEXT_DESC_LSB, AXI_MCDMA_S2MM_BUF_DESC_CHAIN_ADDR);
+	_reg_set(axis_buf_desc_s2mm_v_addr, AXI_MCDMA_MM2S_BD_NEXT_DESC_LSB, AXI_MCDMA_S2MM_BD_CHAIN_ADDR);
 	_reg_set(axis_buf_desc_s2mm_v_addr, AXI_MCDMA_MM2S_BD_BUF_ADDR_LSB, AXI_MCDMA_BUF_DST_ADDR);
 	_reg_set(axis_buf_desc_mm2s_v_addr, AXI_MCDMA_MM2S_BD_CONTROL, (uint32_t) (payload_len * sizeof(uint32_t)));
 	fprintf(stderr, "s2mm Buffer Length: 0x%08x\n", (uint32_t) (payload_len*2 * sizeof(uint16_t)));
@@ -106,8 +105,8 @@ int axi_mcdma_fifo_test(int payload_len) {
 	fprintf(stderr, "mm2s: Enabled channel 0. Disabled all other channels.\n");
 
 	// Map Current Descriptor to buffer space
-	_reg_set(axi_mcdma_v_addr, AXI_MCDMA_MM2S_CH1CURDESC_LSB, AXI_MCDMA_MM2S_BUF_DESC_CHAIN_ADDR);
-	fprintf(stderr, "mm2s: Set channel 0 current bd to address: 0x%08x\n", AXI_MCDMA_MM2S_BUF_DESC_CHAIN_ADDR);
+	_reg_set(axi_mcdma_v_addr, AXI_MCDMA_MM2S_CH1CURDESC_LSB, AXI_MCDMA_MM2S_BD_CHAIN_ADDR);
+	fprintf(stderr, "mm2s: Set channel 0 current bd to address: 0x%08x\n", AXI_MCDMA_MM2S_BD_CHAIN_ADDR);
 
 	// program the CHANNEL.fetch bit (CH.RS)
 	_reg_set(axi_mcdma_v_addr, AXI_MCDMA_MM2S_CH1CR, AXI_MCDMA_MM2S_CH1RS);
@@ -128,8 +127,8 @@ int axi_mcdma_fifo_test(int payload_len) {
 	// Program the TD register of channels
 	// MCDMA starts when TD is programmed
 	// uint32_t td_value_mm2s = AXI_MCDMA_BUF_SRC_ADDR + (payload_len * sizeof(uint32_t))/64;
-	uint32_t td_value_mm2s = AXI_MCDMA_MM2S_BUF_DESC_CHAIN_ADDR;
-	// uint32_t td_value_mm2s = AXI_MCDMA_MM2S_BUF_DESC_CHAIN_ADDR;
+	uint32_t td_value_mm2s = AXI_MCDMA_MM2S_BD_CHAIN_ADDR;
+	// uint32_t td_value_mm2s = AXI_MCDMA_MM2S_BD_CHAIN_ADDR;
 	_reg_set(axi_mcdma_v_addr, AXI_MCDMA_MM2S_CH1TAILDESC_LSB, (uint32_t) td_value_mm2s);
 	fprintf(stderr, "mm2s: Set channel 0 bd tail to tail adddress: 0x%08x\n", td_value_mm2s);
 
@@ -153,8 +152,8 @@ int axi_mcdma_fifo_test(int payload_len) {
 	_reg_set(axi_mcdma_v_addr, AXI_MCDMA_S2MM_CHEN, 0x1);
 	fprintf(stderr, "s2mm: Enabled channel 0. Disabled all other channels.\n");
 
-	_reg_set(axi_mcdma_v_addr, AXI_MCDMA_S2MM_CH1CURDESC_LSB, AXI_MCDMA_S2MM_BUF_DESC_CHAIN_ADDR);
-	fprintf(stderr, "s2mm: Set channel 0 bd to dst address: 00x%08x\n", AXI_MCDMA_S2MM_BUF_DESC_CHAIN_ADDR);
+	_reg_set(axi_mcdma_v_addr, AXI_MCDMA_S2MM_CH1CURDESC_LSB, AXI_MCDMA_S2MM_BD_CHAIN_ADDR);
+	fprintf(stderr, "s2mm: Set channel 0 bd to dst address: 00x%08x\n", AXI_MCDMA_S2MM_BD_CHAIN_ADDR);
 
 	// Porgram the CHANNEL.fetch bit
 	_reg_set(axi_mcdma_v_addr, AXI_MCDMA_S2MM_CH1CR, AXI_MCDMA_MM2S_CH1RS);
@@ -171,7 +170,7 @@ int axi_mcdma_fifo_test(int payload_len) {
 	// Porgram interrupt thresholds (enable interrupt)
 
 	// Porgram the TD register of channels
-	uint32_t td_value_s2mm = AXI_MCDMA_S2MM_BUF_DESC_CHAIN_ADDR << 6;
+	uint32_t td_value_s2mm = AXI_MCDMA_S2MM_BD_CHAIN_ADDR << 6;
 	_reg_set(axi_mcdma_v_addr, AXI_MCDMA_S2MM_CH1TAILDESC_LSB, td_value_s2mm);
 	fprintf(stderr, "s2mm: Set channel 0 bd tail to tail adddress: 00x%08x\n", td_value_s2mm);
 

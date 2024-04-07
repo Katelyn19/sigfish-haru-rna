@@ -2,3 +2,6 @@ src/driver/fifo_test
 src/driver/fifo_test.sh
 HARU/
 .vscode/
+src/driver/build
+mcdma_fifo_test
+mcdma_test
