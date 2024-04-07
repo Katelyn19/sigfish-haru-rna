@@ -10,13 +10,64 @@ This header file defines the register addresses and values to control the MCDMA.
 #include <stdint.h>
 
 /*
+    AXI MCDMA Configuration
+*/
+
+typedef struct mcdma_device mcdma_device_t;
+typedef struct mcdma_channel mcdma_channel_t;
+typedef struct mcdma_bd mcdma_bd_t;
+
+/* mcdma device */
+struct mcdma_device {
+    // device info
+    uint32_t p_baseaddr;
+    void *v_baseaddr;
+    int size; // size of device space in bytes
+
+    // buffer addresses
+    uint32_t p_buffer_src_addr;
+    void *v_buffer_src_addr;
+    uint32_t p_buffer_dst_addr;
+    void *v_buffer_dst_addr;
+
+    // channels
+    int num_channels;
+    mcdma_channel_t *channels;
+};
+
+/* mcdma channel */
+struct mcdma_channel {
+    int channel_id;
+    uint32_t curr_bd_addr; // must be within bits 31:6
+    uint32_t tail_bd_addr; // must be within bits 31:6
+
+    // buffer descriptor chain 
+    mcdma_bd_t *bd_chain;
+};
+
+/* mcdma buffer descriptor */
+struct mcdma_bd {
+    uint32_t p_bd_src_addr;
+    void *v_bd_src_addr;
+    mcdma_bd_t *next_mcdma_bd;
+
+    uint32_t next_bd_addr; // must be within bits 31:6
+    uint32_t buffer_addr;
+    int sof;
+    int eof;
+    uint32_t buffer_length; // must be within bits 0:25
+    uint32_t tid;
+};
+
+/*
     AXI MCDMA Buffer Address Space
 */
 #define AXI_MCDMA_BUF_ADDR_BASE                     0xa0000000
 #define AXI_MCDMA_BUF_SIZE                          0xffff
+#define AXI_MCDMA_MM2S_BUF_DESC_CHAIN_ADDR          0x01000000 // todo: find a more suitable address
+#define AXI_MCDMA_S2MM_BUF_DESC_CHAIN_ADDR          0x02000000 // todo: find a more suitable address
 #define AXI_MCDMA_BUF_SRC_ADDR                      0x10000000
 #define AXI_MCDMA_BUF_DST_ADDR                      0x20000000
-#define AXI_MCDMA_BUF_DESC_CHAIN_ADDR               0x21000000 // todo: find a more suitable address
 
 #define AXI_MCDMA_BUF_INIT_ERROR     0x01
 
