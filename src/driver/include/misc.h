@@ -31,8 +31,8 @@ SOFTWARE. */
 
 #define INFO_PREFIX "[%s::INFO]\033[1;34m "
 #define ERROR_PREFIX "[%s::ERROR]\033[1;31m "
+#define WARNING_PREFIX "[%s::WARNING]\033[1;33m "
 #define NO_COLOUR "\033[0m"
-#define RED_COLOUR "\033[0;31m"
 
 // TODO: add defines of error codes
 
@@ -48,8 +48,21 @@ SOFTWARE. */
     fprintf(stderr, INFO_PREFIX msg NO_COLOUR "\n", __func__, __VA_ARGS__); 
 
 #define ERROR(msg, ...) \
-    fprintf(stderr, ERROR_PREFIX msg RED_COLOUR \
+    fprintf(stderr, ERROR_PREFIX msg NO_COLOUR \
         " At %s:%d\n", \
-        __func__, __VA_ARGS__, __FILE__, __LINE__ - 1);
+        __func__, __VA_ARGS__, __FILE__, __LINE__ - 1); \
+
+#define WARNING(msg, ...) \
+    fprintf(stderr, WARNING_PREFIX msg NO_COLOUR \
+            " At %s:%d\n", \
+            __func__, __VA_ARGS__, __FILE__, __LINE__ - 1); \
+
+#define MALLOC_CHK(ret) { \
+    if ((ret) == NULL) { \
+        MALLOC_ERROR() \
+    } \
+}
+
+#define MALLOC_ERROR() ERROR("%s", "Failed to allocate memory.")
 
 #endif // MISC_H

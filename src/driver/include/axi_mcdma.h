@@ -38,8 +38,8 @@ struct mcdma_device {
 /* mcdma channel */
 struct mcdma_channel {
     int channel_id;
-    uint32_t curr_bd_addr; // must be within bits 31:6
-    uint32_t tail_bd_addr; // must be within bits 31:6
+    uint32_t curr_bd_addr; // only counts bits 31:6
+    uint32_t tail_bd_addr; // only counts bits 31:6
     mcdma_channel_t *next_channel;
 
     // buffer descriptor chain 
@@ -53,23 +53,28 @@ struct mcdma_bd {
     void *v_bd_addr;
     mcdma_bd_t *next_mcdma_bd;
 
-    uint32_t next_bd_addr; // must be within bits 31:6
+    uint32_t next_bd_addr; // only counts bits 31:6
     uint32_t buffer_addr;
+    uint32_t buffer_length; // only counts bits 0:25
     int sof;
     int eof;
-    uint32_t buffer_length; // must be within bits 0:25
     uint32_t tid;
 };
+
+/*
+    AXI MCDMA Device Config
+*/
+#define NUM_CHANNELS 1
 
 /*
     AXI MCDMA Buffer Address Space
 */
 #define AXI_MCDMA_BUF_ADDR_BASE                     0xa0000000
 #define AXI_MCDMA_BUF_SIZE                          0xffff
-#define AXI_MCDMA_MM2S_BD_CHAIN_ADDR          0x01000000 // todo: find a more suitable address
-#define AXI_MCDMA_S2MM_BD_CHAIN_ADDR          0x02000000 // todo: find a more suitable address
 #define AXI_MCDMA_BUF_SRC_ADDR                      0x10000000
 #define AXI_MCDMA_BUF_DST_ADDR                      0x20000000
+#define AXI_MCDMA_MM2S_BD_CHAIN_ADDR                0x30000000
+#define AXI_MCDMA_S2MM_BD_CHAIN_ADDR                0x40000000
 
 #define AXI_MCDMA_BUF_INIT_ERROR     0x01
 
