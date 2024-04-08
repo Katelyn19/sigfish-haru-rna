@@ -32,14 +32,16 @@ struct mcdma_device {
 
     // channels
     int num_channels;
-    mcdma_channel_t *channels;
+    mcdma_channel_t *channels; //todo: change to 16 individual channel fields
 };
 
 /* mcdma channel */
 struct mcdma_channel {
     int channel_id;
-    uint32_t curr_bd_addr; // only counts bits 31:6
-    uint32_t tail_bd_addr; // only counts bits 31:6
+    uint32_t mm2s_curr_bd_addr; // only counts bits 31:6
+    uint32_t mm2s_tail_bd_addr; // only counts bits 31:6
+    uint32_t s2mm_curr_bd_addr; // only counts bits 31:6
+    uint32_t s2mm_tail_bd_addr; // only counts bits 31:6
     mcdma_channel_t *next_channel;
 
     // buffer descriptor chain 
@@ -149,6 +151,19 @@ struct mcdma_bd {
 #define AXI_MCDMA_S2MM_CH1PKTDROP_STAT              0x558   // CH1 Packet Drop Stat
 #define AXI_MCDMA_S2MM_CH1PKTCOUNT_STAT             0x55C   // CH1 Packet Processed count
 
+// S2MM Common Control Register
+#define AXI_MCDMA_S2MM_RS                           0x001   // Run = 1, Stop = 0
+#define AXI_MCDMA_S2MM_RESET                        0x004   // Reset in progress = 1, Reset not in progress = 0
+
+// S2MM Common Status Register
+#define AXI_MCDMA_S2MM_HALTED                       0x001   // Halted = 1, Running = 0
+#define AXI_MCDMA_S2MM_IDLE                         0x002   // Idle = = 1, Not Idle = 0
+
+// S2MM Channel Control Register
+#define AXI_MCDMA_S2MM_CH1RS                        0x001   // Run = 1
+
+// S2MM Channel Status Register
+#define AXI_MCDMA_S2MM_CHIDLE                       0x001   // Idle = = 1, Not Idle = 0
 /*
     Scatter Gather Buffer Descriptor Addresses
 */
@@ -156,8 +171,16 @@ struct mcdma_bd {
 #define AXI_MCDMA_MM2S_BD_NEXT_DESC_MSB             0x04 // Next descriptor pointer
 #define AXI_MCDMA_MM2S_BD_BUF_ADDR_LSB              0x08 // Buffer descriptor address
 #define AXI_MCDMA_MM2S_BD_BUF_ADDR_MSB              0x08 // Buffer descriptor address
-#define AXI_MCDMA_MM2S_BD_CONTROL               0x14 // Control Information for BD
-#define AXI_MCDMA_MM2S_BD_CONTROL_SIDEBAND      0x18 // Control Information for BD
+#define AXI_MCDMA_MM2S_BD_CONTROL                   0x14 // Control Information for BD
+#define AXI_MCDMA_MM2S_BD_CONTROL_SIDEBAND          0x18 // Control Information for BD
 #define AXI_MCDMA_MM2S_BD_STATUS                    0x1C // Control Information for BD
+
+#define AXI_MCDMA_S2MM_BD_NEXT_DESC_LSB             0x00 // Next descriptor pointer
+#define AXI_MCDMA_S2MM_BD_NEXT_DESC_MSB             0x04 // Next descriptor pointer
+#define AXI_MCDMA_S2MM_BD_BUF_ADDR_LSB              0x08 // Buffer descriptor address
+#define AXI_MCDMA_S2MM_BD_BUF_ADDR_MSB              0x08 // Buffer descriptor address
+#define AXI_MCDMA_S2MM_BD_CONTROL                   0x14 // Control Information for BD
+#define AXI_MCDMA_S2MM_BD_STATUS                    0x18 // Control Information for BD
+#define AXI_MCDMA_S2MM_BD_SIDEBAND_STATUS           0x1C // Control Information for BD
 
 #endif
