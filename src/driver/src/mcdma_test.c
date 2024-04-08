@@ -244,6 +244,9 @@ int config_mcdma_mm2s(mcdma_device_t *device) {
 	}
 	_reg_set(device->v_baseaddr, AXI_MCDMA_MM2S_CHEN, channel_en_reg);
 
+	// todo: parametrise current bd setting for multiple channels.
+	WARNING("%s", "Only channel 1 on mm2s device is configured.");
+
 	// Set current descriptor
 	_reg_set(device->v_baseaddr, AXI_MCDMA_MM2S_CH1CURDESC_LSB, device->channels->mm2s_curr_bd_addr);
 	
@@ -269,6 +272,9 @@ int config_mcdma_s2mm(mcdma_device_t *device) {
 		channel_en_reg &= 0x1 << i;
 	}
 	_reg_set(device->v_baseaddr, AXI_MCDMA_S2MM_CHEN, channel_en_reg);
+
+	// todo: parametrise current bd setting for multiple channels.
+	WARNING("%s", "Only channel 1 on s2mm device is configured.");
 
 	// Set current descriptor
 	_reg_set(device->v_baseaddr, AXI_MCDMA_S2MM_CH1CURDESC_LSB, device->channels->s2mm_curr_bd_addr);
