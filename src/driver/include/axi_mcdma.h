@@ -120,12 +120,12 @@ struct mcdma_bd {
 #define AXI_MCDMA_MM2S_CHIDLE                       0x001   // Idle = = 1, Not Idle = 0
 
 // MM2S Error Register
-#define AXI_MCDMA_MM2S_DMA_INTR_ERR                 0x00    // MCDMA Internal Error
+#define AXI_MCDMA_MM2S_DMA_INTR_ERR                 0x01    // MCDMA Internal Error
 #define AXI_MCDMA_MM2S_DMA_SLV_ERR                  0x02    // MCDMA Slave Error
 #define AXI_MCDMA_MM2S_DMA_DEC_ERR                  0x04    // MCDMA Decode Error
-#define AXI_MCDMA_MM2S_SG_INT_ERR                   0x08    // Scatter gather Internal Error
-#define AXI_MCDMA_MM2S_SG_SLV_ERR                   0x10    // Scatter gather Slave Error
-#define AXI_MCDMA_MM2S_SG_DEC_ERR                   0x20    // Scatter gather Decode Error
+#define AXI_MCDMA_MM2S_SG_INT_ERR                   0x10    // Scatter gather Internal Error
+#define AXI_MCDMA_MM2S_SG_SLV_ERR                   0x20    // Scatter gather Slave Error
+#define AXI_MCDMA_MM2S_SG_DEC_ERR                   0x40    // Scatter gather Decode Error
 
 /*
     AXI Multichannel DMA S2MM
@@ -164,6 +164,25 @@ struct mcdma_bd {
 
 // S2MM Channel Status Register
 #define AXI_MCDMA_S2MM_CHIDLE                       0x001   // Idle = = 1, Not Idle = 0
+
+// S2MM Error Register
+#define AXI_MCDMA_S2MM_DMA_INTR_ERR                 0x01    // MCDMA Internal Error
+#define AXI_MCDMA_S2MM_DMA_SLV_ERR                  0x02    // MCDMA Slave Error
+#define AXI_MCDMA_S2MM_DMA_DEC_ERR                  0x04    // MCDMA Decode Error
+#define AXI_MCDMA_S2MM_SG_INT_ERR                   0x10    // Scatter gather Internal Error
+#define AXI_MCDMA_S2MM_SG_SLV_ERR                   0x20    // Scatter gather Slave Error
+#define AXI_MCDMA_S2MM_SG_DEC_ERR                   0x40    // Scatter gather Decode Error
+
+// Channel status register values
+#define AXI_MCDMA_CH_IDLE                           0x01 // Channel idle (queue empty)
+#define AXI_MCDMA_CH_BD_SHORTFALL					0x02 // Channel bd shortfall (packet too large)
+#define AXI_MCDMA_CH_ERR_OTH_CH                     0x08 // Channel error on other channel
+#define AXI_MCDMA_CH_PKTDROP_IRQ                    0x10
+#define AXI_MCDMA_CH_IOC_IRQ                    	0x10
+#define AXI_MCDMA_CH_DLY_IRQ                    	0x10
+#define AXI_MCDMA_CH_ERR_IRQ                    	0x10
+// todo: irq thresholds and statuses
+
 /*
     Scatter Gather Buffer Descriptor Addresses
 */
@@ -182,5 +201,11 @@ struct mcdma_bd {
 #define AXI_MCDMA_S2MM_BD_CONTROL                   0x14 // Control Information for BD
 #define AXI_MCDMA_S2MM_BD_STATUS                    0x18 // Control Information for BD
 #define AXI_MCDMA_S2MM_BD_SIDEBAND_STATUS           0x1C // Control Information for BD
+
+#define AXI_MCDMA_MM2S_SBYTE_MASK					0x01ffffff
+#define AXI_MCDMA_MM2S_DMA_INT_ERR					0x1 << 28
+#define AXI_MCDMA_MM2S_DMA_SLV_ERR					0x1 << 29
+#define AXI_MCDMA_MM2S_DMA_DEC_ERR					0x1 << 30
+#define AXI_MCDMA_MM2S_DMA_COMPLETED				0x1 << 31
 
 #endif

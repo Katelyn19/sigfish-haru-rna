@@ -26,6 +26,11 @@ int start_mcdma(mcdma_device_t *device);
 int verify_payload(mcdma_device_t *device, int payload_length);
 void free_device(mcdma_device_t *device);
 
+// For one channel, one bd
+void common_status(mcdma_device_t *device);
+void channel_status(mcdma_device_t *device);
+void bd_status(mcdma_channel_t *channel);
+
 int mcdma_test (int payload_length) {
 	fprintf(stderr, "============================= MCDMA FIFO TEST =============================\n");
 
@@ -40,11 +45,11 @@ int mcdma_test (int payload_length) {
 		return -1;
 	}
 
-	// res = start_mcdma(&device);
-	// if (res) {
-	// 	ERROR("%s", "Could not start MCDMA.\n");
-	// 	return -1;
-	// }
+	res = start_mcdma(&device);
+	if (res) {
+		ERROR("%s", "Could not start MCDMA.\n");
+		return -1;
+	}
 
 	// res = verify_payload(&device, payload_length);
 	// if (res) {
@@ -290,6 +295,10 @@ int config_mcdma_s2mm(mcdma_device_t *device) {
 	return 0;
 }
 
+int start_mcdma(mcdma_device_t *device) {
+
+}
+
 void free_device(mcdma_device_t *device) {
 	INFO("%s", "Freeing device.");
 	WARNING("%s", "Assuming only one bd chain per channel.");
@@ -298,4 +307,117 @@ void free_device(mcdma_device_t *device) {
 	WARNING("%s", "Assuming only one channel.");
 	free(device->channels);
 	free(device);
+}
+
+void common_status(mcdma_device_t *device) {
+	INFO("common status @ 0x%08x", device->p_baseaddr);
+	uint32_t mm2s_common = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_CSR);
+	if (mm2s_common | AXI_MCDMA_MM2S_HALTED) {
+		INFO("%s", "mm2s_common: halted");
+	}
+	if (mm2s_common | AXI_MCDMA_MM2S_IDLE) {
+		INFO("%s", "mm2s_common: idle");
+	} else {
+		INFO("%s", "mm2s_common: running");
+	}
+
+	uint32_t mm2s_ch_prog = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_CHSER);
+	INFO("mm2s_ch_prog: 0x%08x", mm2s_ch_prog);
+
+	uint32_t mm2s_error = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_ERR);
+	if (mm2s_error | AXI_MCDMA_MM2S_SG_DEC_ERR) {
+		INFO("%s", "mm2s_err: SGDecErr");
+	}
+	if (mm2s_error | AXI_MCDMA_MM2S_SG_INT_ERR) {
+		INFO("%s", "mm2s_err: SGIntErr");
+	}
+	if (mm2s_error | AXI_MCDMA_MM2S_SG_SLV_ERR) {
+		INFO("%s", "mm2s_err: SGSlvErr");
+	}
+	if (mm2s_error | AXI_MCDMA_MM2S_DMA_DEC_ERR) {
+		INFO("%s", "mm2s_err:  DMA Dec Err ");
+	}
+	if (mm2s_error | AXI_MCDMA_MM2S_DMA_SLV_ERR) {
+		INFO("%s", "mm2s_err: DMA SLv Err");
+	}
+	if (mm2s_error | AXI_MCDMA_MM2S_DMA_INTR_ERR) {
+		INFO("%s", "mm2s_err: DMA Intr Err");
+	}
+
+	uint32_t s2mm_common = _reg_get(device->v_baseaddr, AXI_MCDMA_S2MM_CSR);
+	if (s2mm_common | AXI_MCDMA_S2MM_HALTED) {
+		INFO("%s", "s2mm_common: halted");
+	}
+	if (s2mm_common | AXI_MCDMA_S2MM_IDLE) {
+		INFO("%s", "s2mm_common: idle");
+	} else {
+		INFO("%s", "s2mm_common: running");
+	}
+
+	uint32_t s2mm_error = _reg_get(device->v_baseaddr, AXI_MCDMA_S2MM_ERR);
+	if (s2mm_error | AXI_MCDMA_S2MM_SG_DEC_ERR) {
+		INFO("%s", "s2mm_err: SGDecErr");
+	}
+	if (s2mm_error | AXI_MCDMA_S2MM_SG_INT_ERR) {
+		INFO("%s", "s2mm_err: SGIntErr");
+	}
+	if (s2mm_error | AXI_MCDMA_S2MM_SG_SLV_ERR) {
+		INFO("%s", "s2mm_err: SGSlvErr");
+	}
+	if (s2mm_error | AXI_MCDMA_S2MM_DMA_DEC_ERR) {
+		INFO("%s", "s2mm_err:  DMA Dec Err ");
+	}
+	if (s2mm_error | AXI_MCDMA_S2MM_DMA_SLV_ERR) {
+		INFO("%s", "s2mm_err: DMA SLv Err");
+	}
+	if (s2mm_error | AXI_MCDMA_S2MM_DMA_INTR_ERR) {
+		INFO("%s", "s2mm_err: DMA Intr Err");
+	}
+
+	uint32_t s2mm_ch_prog = _reg_get(device->v_baseaddr, AXI_MCDMA_S2MM_CHSER);
+	INFO("s2mm_ch_prog: 0x%08x", s2mm_ch_prog);
+}
+
+void channel_status(mcdma_device_t *device) {
+	INFO("channel 1 status @ 0x%08x", device->p_baseaddr);
+	uint32_t ch1_mm2s_status = _reg_get(device->p_baseaddr, AXI_MCDMA_MM2S_CH1SR);
+	if (ch1_mm2s_status | AXI_MCDMA_CH_IDLE) {
+		INFO("%s", "ch1_mm2s_status: Idle (Queue Empty) ");
+	}
+	if (ch1_mm2s_status | AXI_MCDMA_CH_BD_SHORTFALL) {
+		INFO("%s", "ch1_mm2s_status:  BD ShortFall ");
+	}
+	if (ch1_mm2s_status | AXI_MCDMA_CH_ERR_OTH_CH) {
+		INFO("%s", "ch1_mm2s_status:  Err_on_other_ch_irq ");
+	}
+	if (ch1_mm2s_status | AXI_MCDMA_CH_PKTDROP_IRQ) {
+		INFO("%s", "ch1_mm2s_status:  Pktdrop_irq ");
+	}
+	if (ch1_mm2s_status | AXI_MCDMA_CH_IOC_IRQ) {
+		INFO("%s", "ch1_mm2s_status: IOC_Irq");
+	}
+	if (ch1_mm2s_status | AXI_MCDMA_CH_DLY_IRQ) {
+		INFO("%s", "ch1_mm2s_status: DlyIrq");
+	}
+	if (ch1_mm2s_status | AXI_MCDMA_CH_ERR_IRQ) {
+		INFO("%s", "ch1_mm2s_status:  Err Irq ");
+	}
+}
+
+void bd_status(mcdma_channel_t *channel) {
+	INFO("mm2s bd status @ 0x%08x", channel->mm2s_bd_chain->p_bd_addr);
+	uint32_t mm2s_bd_status = _reg_get(channel->mm2s_bd_chain->v_bd_addr, AXI_MCDMA_MM2S_BD_STATUS);
+	INFO("mm2s_bd_status: bytes transferred = %d", mm2s_bd_status & AXI_MCDMA_MM2S_SBYTE_MASK);
+	if (mm2s_bd_status | AXI_MCDMA_MM2S_DMA_INT_ERR) {
+		INFO("%s", "mm2s_bd_status: DMA Int Err");
+	}
+	if (mm2s_bd_status | AXI_MCDMA_MM2S_DMA_SLV_ERR) {
+		INFO("%s", "mm2s_bd_status: DMA Slave Err ");
+	}
+	if (mm2s_bd_status | AXI_MCDMA_MM2S_DMA_DEC_ERR) {
+		INFO("%s", "mm2s_bd_status: DMA Dec Err");
+	}
+	if (mm2s_bd_status | AXI_MCDMA_MM2S_DMA_COMPLETED) {
+		INFO("%s", "mm2s_bd_status: Completed");
+	}
 }
