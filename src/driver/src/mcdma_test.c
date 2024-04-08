@@ -45,7 +45,7 @@ int mcdma_test (int payload_length) {
 		return -1;
 	}
 
-	res = start_mcdma(&device);
+	res = start_mcdma(device);
 	if (res) {
 		ERROR("%s", "Could not start MCDMA.\n");
 		return -1;
@@ -296,7 +296,7 @@ int config_mcdma_s2mm(mcdma_device_t *device) {
 }
 
 int start_mcdma(mcdma_device_t *device) {
-
+	return 0;
 }
 
 void free_device(mcdma_device_t *device) {
@@ -380,7 +380,7 @@ void common_status(mcdma_device_t *device) {
 
 void channel_status(mcdma_device_t *device) {
 	INFO("channel 1 status @ 0x%08x", device->p_baseaddr);
-	uint32_t ch1_mm2s_status = _reg_get(device->p_baseaddr, AXI_MCDMA_MM2S_CH1SR);
+	uint32_t ch1_mm2s_status = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_CH1SR);
 	if (ch1_mm2s_status | AXI_MCDMA_CH_IDLE) {
 		INFO("%s", "ch1_mm2s_status: Idle (Queue Empty) ");
 	}
@@ -407,17 +407,17 @@ void channel_status(mcdma_device_t *device) {
 void bd_status(mcdma_channel_t *channel) {
 	INFO("mm2s bd status @ 0x%08x", channel->mm2s_bd_chain->p_bd_addr);
 	uint32_t mm2s_bd_status = _reg_get(channel->mm2s_bd_chain->v_bd_addr, AXI_MCDMA_MM2S_BD_STATUS);
-	INFO("mm2s_bd_status: bytes transferred = %d", mm2s_bd_status & AXI_MCDMA_MM2S_SBYTE_MASK);
-	if (mm2s_bd_status | AXI_MCDMA_MM2S_DMA_INT_ERR) {
+	INFO("mm2s_bd_status: bytes transferred = %d", mm2s_bd_status & AXI_MCDMA_MM2S_BD_SBYTE_MASK);
+	if (mm2s_bd_status | AXI_MCDMA_MM2S_BD_DMA_INT_ERR) {
 		INFO("%s", "mm2s_bd_status: DMA Int Err");
 	}
-	if (mm2s_bd_status | AXI_MCDMA_MM2S_DMA_SLV_ERR) {
+	if (mm2s_bd_status | AXI_MCDMA_MM2S_BD_DMA_SLV_ERR) {
 		INFO("%s", "mm2s_bd_status: DMA Slave Err ");
 	}
-	if (mm2s_bd_status | AXI_MCDMA_MM2S_DMA_DEC_ERR) {
+	if (mm2s_bd_status | AXI_MCDMA_MM2S_BD_DMA_DEC_ERR) {
 		INFO("%s", "mm2s_bd_status: DMA Dec Err");
 	}
-	if (mm2s_bd_status | AXI_MCDMA_MM2S_DMA_COMPLETED) {
+	if (mm2s_bd_status | AXI_MCDMA_MM2S_BD_DMA_COMPLETED) {
 		INFO("%s", "mm2s_bd_status: Completed");
 	}
 }

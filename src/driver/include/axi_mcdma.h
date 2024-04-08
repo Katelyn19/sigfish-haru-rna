@@ -202,10 +202,10 @@ struct mcdma_bd {
 #define AXI_MCDMA_S2MM_BD_STATUS                    0x18 // Control Information for BD
 #define AXI_MCDMA_S2MM_BD_SIDEBAND_STATUS           0x1C // Control Information for BD
 
-#define AXI_MCDMA_MM2S_SBYTE_MASK					0x01ffffff
-#define AXI_MCDMA_MM2S_DMA_INT_ERR					0x1 << 28
-#define AXI_MCDMA_MM2S_DMA_SLV_ERR					0x1 << 29
-#define AXI_MCDMA_MM2S_DMA_DEC_ERR					0x1 << 30
-#define AXI_MCDMA_MM2S_DMA_COMPLETED				0x1 << 31
+#define AXI_MCDMA_MM2S_BD_SBYTE_MASK					0x01ffffff
+#define AXI_MCDMA_MM2S_BD_DMA_INT_ERR					0x1 << 28
+#define AXI_MCDMA_MM2S_BD_DMA_SLV_ERR					0x1 << 29
+#define AXI_MCDMA_MM2S_BD_DMA_DEC_ERR					0x1 << 30
+#define AXI_MCDMA_MM2S_BD_DMA_COMPLETED				0x1 << 31
 
 #endif
