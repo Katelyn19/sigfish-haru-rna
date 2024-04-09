@@ -17,6 +17,12 @@ typedef struct mcdma_device mcdma_device_t;
 typedef struct mcdma_channel mcdma_channel_t;
 typedef struct mcdma_bd mcdma_bd_t;
 
+
+/*
+    AXI MCDMA Device Config
+*/
+#define NUM_CHANNELS 2
+
 /* mcdma device */
 struct mcdma_device {
     // device info
@@ -32,17 +38,22 @@ struct mcdma_device {
 
     // channels
     int num_channels;
-    mcdma_channel_t *channels; //todo: change to 16 individual channel fields
+    mcdma_channel_t *channels[NUM_CHANNELS];
+
 };
 
 /* mcdma channel */
 struct mcdma_channel {
     int channel_id;
+    uint32_t p_buf_src_addr;
+    uint32_t *v_buf_src_addr;
+    uint32_t p_buf_dst_addr;
+    uint32_t *v_buf_dst_addr;
+    uint32_t buf_size;
     uint32_t mm2s_curr_bd_addr; // only counts bits 31:6
     uint32_t mm2s_tail_bd_addr; // only counts bits 31:6
     uint32_t s2mm_curr_bd_addr; // only counts bits 31:6
     uint32_t s2mm_tail_bd_addr; // only counts bits 31:6
-    mcdma_channel_t *next_channel;
 
     // buffer descriptor chain 
     mcdma_bd_t *mm2s_bd_chain;
@@ -64,11 +75,6 @@ struct mcdma_bd {
 };
 
 /*
-    AXI MCDMA Device Config
-*/
-#define NUM_CHANNELS 1
-
-/*
     AXI MCDMA Buffer Address Space
 */
 #define AXI_MCDMA_BUF_ADDR_BASE                     0xa0000000
@@ -77,6 +83,7 @@ struct mcdma_bd {
 #define AXI_MCDMA_BUF_DST_ADDR                      0x20000000
 #define AXI_MCDMA_MM2S_BD_CHAIN_ADDR                0x01000000
 #define AXI_MCDMA_S2MM_BD_CHAIN_ADDR                0x02000000
+#define AXI_MCDMA_BD_OFFSET                         0x1000
 
 #define AXI_MCDMA_BUF_INIT_ERROR     0x01
 
@@ -95,15 +102,16 @@ struct mcdma_bd {
 #define AXI_MCDMA_MM2S_CHANNELS_SERVICE             0x020   // MM2S Channels Completed Register
 #define AXI_MCDMA_MM2S_ARCACHE_ARUSER               0x024   // Set the ARCHACHE and ARUSER values for AXI4 read
 #define AXI_MCDMA_MM2S_INTR_STATUS                  0x028   // MM2S Channel Interrupt Monitor Register
-#define AXI_MCDMA_MM2S_CH1CR                        0x040   // CH1 Control Register
+#define AXI_MCDMA_MM2S_CHCR                         0x040   // CH1 Control Register
+#define AXI_MCDMA_CH_OFFSET                         0x040
 
 // MM2S Channel 1 Address Space
-#define AXI_MCDMA_MM2S_CH1SR                        0x044   // CH1 Status Register
-#define AXI_MCDMA_MM2S_CH1CURDESC_LSB               0x048   // CH1 Current Descriptor (LSB)
-#define AXI_MCDMA_MM2S_CH1CURDESC_MSB               0x04C   // CH1 Current Descriptor (MSB)
-#define AXI_MCDMA_MM2S_CH1TAILDESC_LSB              0x050   // CH1 Tail Descriptor (LSB)
-#define AXI_MCDMA_MM2S_CH1TAILDESC_MSB              0x054   // CH1 Tail Descriptor (MSB)
-#define AXI_MCDMA_MM2S_CH1PKTCOUNT_STAT             0x058   // CH1 Packet Processed count
+#define AXI_MCDMA_MM2S_CHSR                        0x044   // CH1 Status Register
+#define AXI_MCDMA_MM2S_CHCURDESC_LSB               0x048   // CH1 Current Descriptor (LSB)
+#define AXI_MCDMA_MM2S_CHCURDESC_MSB               0x04C   // CH1 Current Descriptor (MSB)
+#define AXI_MCDMA_MM2S_CHTAILDESC_LSB              0x050   // CH1 Tail Descriptor (LSB)
+#define AXI_MCDMA_MM2S_CHTAILDESC_MSB              0x054   // CH1 Tail Descriptor (MSB)
+#define AXI_MCDMA_MM2S_CHPKTCOUNT_STAT             0x058   // CH1 Packet Processed count
 
 // MM2S Common Control Register
 #define AXI_MCDMA_MM2S_RS                           0x001   // Run = 1, Stop = 0
@@ -114,7 +122,7 @@ struct mcdma_bd {
 #define AXI_MCDMA_MM2S_IDLE                         0x002   // Idle = = 1, Not Idle = 0
 
 // MM2S Channel Control Register
-#define AXI_MCDMA_MM2S_CH1RS                        0x001   // Run = 1
+#define AXI_MCDMA_MM2S_CHRS                        0x001   // Run = 1
 
 // MM2S Channel Status Register
 #define AXI_MCDMA_MM2S_CHIDLE                       0x001   // Idle = = 1, Not Idle = 0
@@ -142,14 +150,14 @@ struct mcdma_bd {
 #define AXI_MCDMA_S2MM_INTR_STATUS                  0x520   // S2MM Channel Interrupt Monitor Register
 
 // S2MM Channel 1 Address Space
-#define AXI_MCDMA_S2MM_CH1CR                        0x540   // CH1 Status Register
-#define AXI_MCDMA_S2MM_CH1SR                        0x544   // CH1 Status Register
-#define AXI_MCDMA_S2MM_CH1CURDESC_LSB               0x548   // CH1 Current Descriptor (LSB)
-#define AXI_MCDMA_S2MM_CH1CURDESC_MSB               0x54C   // CH1 Current Descriptor (MSB)
-#define AXI_MCDMA_S2MM_CH1TAILDESC_LSB              0x550   // CH1 Tail Descriptor (LSB)
-#define AXI_MCDMA_S2MM_CH1TAILDESC_MSB              0x554   // CH1 Tail Descriptor (MSB)
-#define AXI_MCDMA_S2MM_CH1PKTDROP_STAT              0x558   // CH1 Packet Drop Stat
-#define AXI_MCDMA_S2MM_CH1PKTCOUNT_STAT             0x55C   // CH1 Packet Processed count
+#define AXI_MCDMA_S2MM_CHCR                        0x540   // CH1 Status Register
+#define AXI_MCDMA_S2MM_CHSR                        0x544   // CH1 Status Register
+#define AXI_MCDMA_S2MM_CHCURDESC_LSB               0x548   // CH1 Current Descriptor (LSB)
+#define AXI_MCDMA_S2MM_CHCURDESC_MSB               0x54C   // CH1 Current Descriptor (MSB)
+#define AXI_MCDMA_S2MM_CHTAILDESC_LSB              0x550   // CH1 Tail Descriptor (LSB)
+#define AXI_MCDMA_S2MM_CHTAILDESC_MSB              0x554   // CH1 Tail Descriptor (MSB)
+#define AXI_MCDMA_S2MM_CHPKTDROP_STAT              0x558   // CH1 Packet Drop Stat
+#define AXI_MCDMA_S2MM_CHPKTCOUNT_STAT             0x55C   // CH1 Packet Processed count
 
 // S2MM Common Control Register
 #define AXI_MCDMA_S2MM_RS                           0x001   // Run = 1, Stop = 0
@@ -160,7 +168,7 @@ struct mcdma_bd {
 #define AXI_MCDMA_S2MM_IDLE                         0x002   // Idle = = 1, Not Idle = 0
 
 // S2MM Channel Control Register
-#define AXI_MCDMA_S2MM_CH1RS                        0x001   // Run = 1
+#define AXI_MCDMA_S2MM_CHRS                        0x001   // Run = 1
 
 // S2MM Channel Status Register
 #define AXI_MCDMA_S2MM_CHIDLE                       0x001   // Idle = = 1, Not Idle = 0
