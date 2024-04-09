@@ -84,6 +84,7 @@ struct mcdma_bd {
 #define AXI_MCDMA_MM2S_BD_CHAIN_ADDR                0x01000000
 #define AXI_MCDMA_S2MM_BD_CHAIN_ADDR                0x02000000
 #define AXI_MCDMA_BD_OFFSET                         0x1000
+#define AXI_MCDMA_CH_OFFSET                         0x040
 
 #define AXI_MCDMA_BUF_INIT_ERROR     0x01
 
@@ -103,7 +104,6 @@ struct mcdma_bd {
 #define AXI_MCDMA_MM2S_ARCACHE_ARUSER               0x024   // Set the ARCHACHE and ARUSER values for AXI4 read
 #define AXI_MCDMA_MM2S_INTR_STATUS                  0x028   // MM2S Channel Interrupt Monitor Register
 #define AXI_MCDMA_MM2S_CHCR                         0x040   // CH1 Control Register
-#define AXI_MCDMA_CH_OFFSET                         0x040
 
 // MM2S Channel 1 Address Space
 #define AXI_MCDMA_MM2S_CHSR                        0x044   // CH1 Status Register
