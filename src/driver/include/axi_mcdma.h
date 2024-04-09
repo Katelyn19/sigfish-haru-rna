@@ -21,14 +21,14 @@ typedef struct mcdma_bd mcdma_bd_t;
 struct mcdma_device {
     // device info
     uint32_t p_baseaddr;
-    void *v_baseaddr;
+    uint32_t *v_baseaddr;
     int size; // size of device space in bytes
 
     // buffer addresses
     uint32_t p_buffer_src_addr;
-    void *v_buffer_src_addr;
+    uint32_t *v_buffer_src_addr;
     uint32_t p_buffer_dst_addr;
-    void *v_buffer_dst_addr;
+    uint32_t *v_buffer_dst_addr;
 
     // channels
     int num_channels;
@@ -52,7 +52,7 @@ struct mcdma_channel {
 /* mcdma buffer descriptor */
 struct mcdma_bd {
     uint32_t p_bd_addr;
-    void *v_bd_addr;
+    uint32_t *v_bd_addr;
     mcdma_bd_t *next_mcdma_bd;
 
     uint32_t next_bd_addr; // only counts bits 31:6
@@ -75,8 +75,8 @@ struct mcdma_bd {
 #define AXI_MCDMA_BUF_SIZE                          0xffff
 #define AXI_MCDMA_BUF_SRC_ADDR                      0x10000000
 #define AXI_MCDMA_BUF_DST_ADDR                      0x20000000
-#define AXI_MCDMA_MM2S_BD_CHAIN_ADDR                0x30000000
-#define AXI_MCDMA_S2MM_BD_CHAIN_ADDR                0x40000000
+#define AXI_MCDMA_MM2S_BD_CHAIN_ADDR                0x01000000
+#define AXI_MCDMA_S2MM_BD_CHAIN_ADDR                0x02000000
 
 #define AXI_MCDMA_BUF_INIT_ERROR     0x01
 
@@ -175,12 +175,10 @@ struct mcdma_bd {
 
 // Channel status register values
 #define AXI_MCDMA_CH_IDLE                           0x01 // Channel idle (queue empty)
-#define AXI_MCDMA_CH_BD_SHORTFALL					0x02 // Channel bd shortfall (packet too large)
 #define AXI_MCDMA_CH_ERR_OTH_CH                     0x08 // Channel error on other channel
-#define AXI_MCDMA_CH_PKTDROP_IRQ                    0x10
-#define AXI_MCDMA_CH_IOC_IRQ                    	0x10
-#define AXI_MCDMA_CH_DLY_IRQ                    	0x10
-#define AXI_MCDMA_CH_ERR_IRQ                    	0x10
+#define AXI_MCDMA_CH_IOC_IRQ                        0x20
+#define AXI_MCDMA_CH_DLY_IRQ                        0x40
+#define AXI_MCDMA_CH_ERR_IRQ                        0x80
 // todo: irq thresholds and statuses
 
 /*
@@ -202,10 +200,17 @@ struct mcdma_bd {
 #define AXI_MCDMA_S2MM_BD_STATUS                    0x18 // Control Information for BD
 #define AXI_MCDMA_S2MM_BD_SIDEBAND_STATUS           0x1C // Control Information for BD
 
-#define AXI_MCDMA_MM2S_BD_SBYTE_MASK					0x01ffffff
-#define AXI_MCDMA_MM2S_BD_DMA_INT_ERR					0x1 << 28
-#define AXI_MCDMA_MM2S_BD_DMA_SLV_ERR					0x1 << 29
-#define AXI_MCDMA_MM2S_BD_DMA_DEC_ERR					0x1 << 30
-#define AXI_MCDMA_MM2S_BD_DMA_COMPLETED				0x1 << 31
+#define AXI_MCDMA_MM2S_BD_SBYTE_MASK                0x01ffffff
+#define AXI_MCDMA_MM2S_BD_DMA_INT_ERR               0x1 << 28
+#define AXI_MCDMA_MM2S_BD_DMA_SLV_ERR               0x1 << 29
+#define AXI_MCDMA_MM2S_BD_DMA_DEC_ERR               0x1 << 30
+#define AXI_MCDMA_MM2S_BD_DMA_COMPLETED             0x1 << 31
 
+#define AXI_MCDMA_S2MM_BD_SBYTE_MASK                0x01ffffff
+#define AXI_MCDMA_S2MM_BD_DMA_INT_ERR               0x1 << 28
+#define AXI_MCDMA_S2MM_BD_DMA_SLV_ERR               0x1 << 29
+#define AXI_MCDMA_S2MM_BD_DMA_DEC_ERR               0x1 << 30
+#define AXI_MCDMA_S2MM_BD_DMA_COMPLETED             0x1 << 31
+#define AXI_MCDMA_S2MM_BD_DMA_RXSOF                 0x1 << 27
+#define AXI_MCDMA_S2MM_BD_DMA_RXEOF                 0x1 << 28
 #endif

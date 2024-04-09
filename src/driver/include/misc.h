@@ -32,6 +32,7 @@ SOFTWARE. */
 #define INFO_PREFIX "[%s::INFO]\033[1;34m "
 #define ERROR_PREFIX "[%s::ERROR]\033[1;31m "
 #define WARNING_PREFIX "[%s::WARNING]\033[1;33m "
+#define STATUS_PREFIX "[%s::STATUS]\033[1;36m "
 #define NO_COLOUR "\033[0m"
 
 // TODO: add defines of error codes
@@ -62,6 +63,9 @@ SOFTWARE. */
         MALLOC_ERROR() \
     } \
 }
+
+#define STATUS(msg, ...) \
+    fprintf(stderr, STATUS_PREFIX msg NO_COLOUR "\n", __func__, __VA_ARGS__); 
 
 #define MALLOC_ERROR() ERROR("%s", "Failed to allocate memory.")
 

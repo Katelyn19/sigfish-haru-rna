@@ -22,14 +22,17 @@ int config_mcdma(mcdma_device_t *device, int payload_length);
 int config_mcdma_bd_chain(mcdma_channel_t *channel, uint32_t mm2s_bd_addr, uint32_t s2mm_bd_addr, int payload_length);
 int config_mcdma_mm2s(mcdma_device_t *device);
 int config_mcdma_s2mm(mcdma_device_t *device);
-int start_mcdma(mcdma_device_t *device);
+int run_mcdma(mcdma_device_t *device);
 int verify_payload(mcdma_device_t *device, int payload_length);
 void free_device(mcdma_device_t *device);
 
 // For one channel, one bd
-void common_status(mcdma_device_t *device);
-void channel_status(mcdma_device_t *device);
-void bd_status(mcdma_channel_t *channel);
+void mm2s_common_status(mcdma_device_t *device);
+void mm2s_channel_status(mcdma_device_t *device);
+void mm2s_bd_status(mcdma_channel_t *channel);
+void s2mm_common_status(mcdma_device_t *device);
+void s2mm_channel_status(mcdma_device_t *device);
+void s2mm_bd_status(mcdma_channel_t *channel);
 
 int mcdma_test (int payload_length) {
 	fprintf(stderr, "============================= MCDMA FIFO TEST =============================\n");
@@ -42,20 +45,22 @@ int mcdma_test (int payload_length) {
 	res = config_mcdma(device, payload_length);
 	if (res) {
 		ERROR("%s", "Could not config MCDMA.");
+		free_device(device);
 		return -1;
 	}
 
-	res = start_mcdma(device);
+	res = run_mcdma(device);
 	if (res) {
-		ERROR("%s", "Could not start MCDMA.\n");
+		ERROR("%s", "Could not run MCDMA.\n");
+		free_device(device);
 		return -1;
 	}
 
-	// res = verify_payload(&device, payload_length);
-	// if (res) {
-	// 	ERROR("%s", "Could not verify payload.\n");
-	// 	return -1;
-	// }
+	res = verify_payload(device, payload_length);
+	if (res) {
+		ERROR("%s", "Could not verify payload.\n");
+		return -1;
+	}
 
 	free_device(device);
 
@@ -131,14 +136,6 @@ int config_mcdma(mcdma_device_t * device, int payload_length) {
 
 	INFO("configd %d channels.", NUM_CHANNELS);
 
-	/*** Configure MCDMA device ***/
-	res = config_mcdma_mm2s(device);
-	if (res) {
-		ERROR("%s", "failed to config mm2s.");
-	}
-
-	INFO("%s", "configd mm2s.");
-
 	return 0;
 }
 
@@ -171,7 +168,7 @@ int config_mcdma_bd_chain(mcdma_channel_t *channel, uint32_t mm2s_bd_addr, uint3
 	}
 
 	mm2s_bd->next_mcdma_bd = NULL;
-	mm2s_bd->next_bd_addr = mm2s_bd->p_bd_addr;
+	mm2s_bd->next_bd_addr = channel->mm2s_tail_bd_addr;
 	mm2s_bd->buffer_addr = AXI_MCDMA_BUF_SRC_ADDR;
 	mm2s_bd->buffer_length = (uint32_t) (payload_length * sizeof( uint32_t ));
 	mm2s_bd->sof = 1;
@@ -195,11 +192,11 @@ int config_mcdma_bd_chain(mcdma_channel_t *channel, uint32_t mm2s_bd_addr, uint3
 	_reg_set(mm2s_bd->v_bd_addr, AXI_MCDMA_MM2S_BD_STATUS, 0x00000000);
 
 	INFO("Writing mm2s_bd fields to addr 0x%08x:", mm2s_bd->p_bd_addr);
-	INFO("reg@0x%08x : 0x%08x (next bd)", AXI_MCDMA_MM2S_BD_NEXT_DESC_LSB, mm2s_bd->next_bd_addr);
-	INFO("reg@0x%08x : 0x%08x (buf addr)", AXI_MCDMA_MM2S_BD_BUF_ADDR_LSB, mm2s_bd->buffer_addr);
-	INFO("reg@0x%08x : 0x%08x (bd sof, eof, buf length)", AXI_MCDMA_MM2S_BD_CONTROL, control);
-	INFO("reg@0x%08x : 0x%08x (bd tid)", AXI_MCDMA_MM2S_BD_CONTROL_SIDEBAND, control_sideband);
-	INFO("reg@0x%08x : 0x%08x (bd status)", AXI_MCDMA_MM2S_BD_STATUS, 0x00000000);
+	INFO("reg@0x%03x : 0x%08x (next bd)", AXI_MCDMA_MM2S_BD_NEXT_DESC_LSB, mm2s_bd->next_bd_addr);
+	INFO("reg@0x%03x : 0x%08x (buf addr)", AXI_MCDMA_MM2S_BD_BUF_ADDR_LSB, mm2s_bd->buffer_addr);
+	INFO("reg@0x%03x : 0x%08x (bd sof, eof, buf length)", AXI_MCDMA_MM2S_BD_CONTROL, control);
+	INFO("reg@0x%03x : 0x%08x (bd tid)", AXI_MCDMA_MM2S_BD_CONTROL_SIDEBAND, control_sideband);
+	INFO("reg@0x%03x : 0x%08x (bd status)", AXI_MCDMA_MM2S_BD_STATUS, 0x00000000);
 
 	// initialise s2mm bd chain space
 	s2mm_bd->p_bd_addr = AXI_MCDMA_S2MM_BD_CHAIN_ADDR;
@@ -215,37 +212,35 @@ int config_mcdma_bd_chain(mcdma_channel_t *channel, uint32_t mm2s_bd_addr, uint3
 
 	s2mm_bd->next_mcdma_bd = NULL;
 	s2mm_bd->next_bd_addr = s2mm_bd->p_bd_addr;
-	s2mm_bd->buffer_addr = AXI_MCDMA_BUF_SRC_ADDR;
-	s2mm_bd->buffer_length = (uint32_t) (payload_length * sizeof( uint32_t ));
+	s2mm_bd->buffer_addr = AXI_MCDMA_BUF_DST_ADDR;
+	s2mm_bd->buffer_length = (uint32_t) 2*(payload_length * sizeof( uint32_t ));
 
 	INFO("%s", "s2mm_bd fields:");
 	INFO("> next_bd_addr: 0x%08x", s2mm_bd->next_bd_addr);
 	INFO("> buffer_addr: 0x%08x", s2mm_bd->buffer_addr);
 	INFO("> buffer_length: 0x%08x", s2mm_bd->buffer_length);
 
-	_reg_set(s2mm_bd->v_bd_addr, AXI_MCDMA_S2MM_BD_NEXT_DESC_LSB, mm2s_bd->next_bd_addr);
-	_reg_set(s2mm_bd->v_bd_addr, AXI_MCDMA_S2MM_BD_BUF_ADDR_LSB, mm2s_bd->buffer_addr);
-	_reg_set(s2mm_bd->v_bd_addr, AXI_MCDMA_S2MM_BD_CONTROL, mm2s_bd->buffer_length);
+	_reg_set(s2mm_bd->v_bd_addr, AXI_MCDMA_S2MM_BD_NEXT_DESC_LSB, s2mm_bd->next_bd_addr);
+	_reg_set(s2mm_bd->v_bd_addr, AXI_MCDMA_S2MM_BD_BUF_ADDR_LSB, s2mm_bd->buffer_addr);
+	_reg_set(s2mm_bd->v_bd_addr, AXI_MCDMA_S2MM_BD_CONTROL, s2mm_bd->buffer_length);
 	_reg_set(s2mm_bd->v_bd_addr, AXI_MCDMA_S2MM_BD_STATUS, 0x00000000);
 
-	INFO("Writing mm2s_bd fields to addr 0x%08x:", mm2s_bd->p_bd_addr);
-	INFO("reg@0x%08x : 0x%08x (next bd)", AXI_MCDMA_S2MM_BD_NEXT_DESC_LSB, mm2s_bd->next_bd_addr);
-	INFO("reg@0x%08x : 0x%08x (buf addr)", AXI_MCDMA_S2MM_BD_BUF_ADDR_LSB, mm2s_bd->buffer_addr);
-	INFO("reg@0x%08x : 0x%08x (buf length)", AXI_MCDMA_S2MM_BD_CONTROL, mm2s_bd->buffer_length);
-	INFO("reg@0x%08x : 0x%08x (bd status)", AXI_MCDMA_S2MM_BD_STATUS, 0x00000000);
+	INFO("Writing s2mm_bd fields to addr 0x%08x:", s2mm_bd->p_bd_addr);
+	INFO("reg@0x%03x : 0x%08x (next bd)", AXI_MCDMA_S2MM_BD_NEXT_DESC_LSB, s2mm_bd->next_bd_addr);
+	INFO("reg@0x%03x : 0x%08x (buf addr)", AXI_MCDMA_S2MM_BD_BUF_ADDR_LSB, s2mm_bd->buffer_addr);
+	INFO("reg@0x%03x : 0x%08x (buf length)", AXI_MCDMA_S2MM_BD_CONTROL, s2mm_bd->buffer_length);
+	INFO("reg@0x%03x : 0x%08x (bd status)", AXI_MCDMA_S2MM_BD_STATUS, 0x00000000);
+
+	close(dev_fd);
 
 	return 0;
 }
 
 int config_mcdma_mm2s(mcdma_device_t *device) {
-	// reset mcdma mm2s
-	INFO("%s", "Reset mm2s.\n");
-	_reg_set(device->v_baseaddr, AXI_MCDMA_MM2S_CCR, AXI_MCDMA_MM2S_RESET);
-
 	// enable channels
 	uint32_t channel_en_reg = 0x0;
 	for (int i = 0; i < device->num_channels; i++) {
-		channel_en_reg &= 0x1 << i;
+		channel_en_reg |= 0x1 << i;
 	}
 	_reg_set(device->v_baseaddr, AXI_MCDMA_MM2S_CHEN, channel_en_reg);
 
@@ -259,22 +254,28 @@ int config_mcdma_mm2s(mcdma_device_t *device) {
 	_reg_set(device->v_baseaddr, AXI_MCDMA_MM2S_CH1CR, AXI_MCDMA_MM2S_CH1RS);
 
 	INFO("Writing mm2s configuration to addr 0x%08x", device->p_baseaddr);
-	INFO("reg@0x%08x : 0x%08x (channel enable)", AXI_MCDMA_MM2S_CHEN, channel_en_reg);
-	INFO("reg@0x%08x : 0x%08x (current bd)", AXI_MCDMA_MM2S_CH1CURDESC_LSB, device->channels->mm2s_curr_bd_addr);
-	INFO("reg@0x%08x : 0x%08x (channel 1 fetch)", AXI_MCDMA_MM2S_CH1CR, AXI_MCDMA_MM2S_CH1RS);
+	INFO("reg@0x%03x : 0x%08x (channel enable)", AXI_MCDMA_MM2S_CHEN, channel_en_reg);
+	INFO("reg@0x%03x : 0x%08x (current bd)", AXI_MCDMA_MM2S_CH1CURDESC_LSB, device->channels->mm2s_curr_bd_addr);
+	INFO("reg@0x%03x : 0x%08x (channel 1 fetch)", AXI_MCDMA_MM2S_CH1CR, AXI_MCDMA_MM2S_CH1RS);
 
 	return 0;
 }
 
 int config_mcdma_s2mm(mcdma_device_t *device) {
 	// reset mcdma s2mm
-	INFO("%s", "Reset s2mm.\n");
-	_reg_set(device->v_baseaddr, AXI_MCDMA_S2MM_CCR, AXI_MCDMA_S2MM_RESET);
+	// INFO("%s", "Reset s2mm.");
+	// _reg_set(device->v_baseaddr, AXI_MCDMA_S2MM_CCR, AXI_MCDMA_S2MM_RESET);
+
+	// wait for reset
+	// uint32_t s2mm_ccr = _reg_get(device->v_baseaddr, AXI_MCDMA_S2MM_CCR);
+	// while (s2mm_ccr & AXI_MCDMA_S2MM_RESET) {
+	// 	s2mm_ccr = _reg_get(device->v_baseaddr, AXI_MCDMA_S2MM_CCR);
+	// }
 
 	// enable channels
 	uint32_t channel_en_reg = 0x0;
 	for (int i = 0; i < device->num_channels; i++) {
-		channel_en_reg &= 0x1 << i;
+		channel_en_reg |= 0x1 << i;
 	}
 	_reg_set(device->v_baseaddr, AXI_MCDMA_S2MM_CHEN, channel_en_reg);
 
@@ -288,19 +289,132 @@ int config_mcdma_s2mm(mcdma_device_t *device) {
 	_reg_set(device->v_baseaddr, AXI_MCDMA_S2MM_CH1CR, AXI_MCDMA_S2MM_CH1RS);
 
 	INFO("Writing s2mm configuration to addr 0x%08x", device->p_baseaddr);
-	INFO("reg@0x%08x : 0x%08x (channel enable)", AXI_MCDMA_S2MM_CHEN, channel_en_reg);
-	INFO("reg@0x%08x : 0x%08x (current bd)", AXI_MCDMA_S2MM_CH1CURDESC_LSB, device->channels->s2mm_curr_bd_addr);
-	INFO("reg@0x%08x : 0x%08x (channel 1 fetch)", AXI_MCDMA_S2MM_CH1CR, AXI_MCDMA_S2MM_CH1RS);
+	INFO("reg@0x%03x : 0x%08x (channel enable)", AXI_MCDMA_S2MM_CHEN, channel_en_reg);
+	INFO("reg@0x%03x : 0x%08x (current bd)", AXI_MCDMA_S2MM_CH1CURDESC_LSB, device->channels->s2mm_curr_bd_addr);
+	INFO("reg@0x%03x : 0x%08x (channel 1 fetch)", AXI_MCDMA_S2MM_CH1CR, AXI_MCDMA_S2MM_CH1RS);
 
 	return 0;
 }
 
-int start_mcdma(mcdma_device_t *device) {
+/*
+	Programming sequence of transfer:
+	1. Reset MCDMA
+	2. Program s2mm
+	3. Start s2mm
+	4. Program mm2s
+	5. Start mm2s
+	6. Wait for mm2s transfer to complete
+	7. Wait for s2mm transfer to complete
+*/
+int run_mcdma(mcdma_device_t *device) {
+	int res;
+
+	// reset mcdmad
+	INFO("%s", "Reset MCDMA.");
+	_reg_set(device->v_baseaddr, AXI_MCDMA_MM2S_CCR, AXI_MCDMA_MM2S_RESET);
+
+	// wait for reset
+	uint32_t mm2s_ccr = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_CCR);
+	while (mm2s_ccr & AXI_MCDMA_MM2S_RESET) {
+		mm2s_ccr = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_CCR);
+	}
+
+	// program s2mm
+	res = config_mcdma_s2mm(device);
+	if (res) {
+		ERROR("%s", "failed to config s2mm.");
+	}
+	INFO("%s", "configd s2mm.");
+
+	// Start s2mm
+	_reg_set(device->v_baseaddr, AXI_MCDMA_S2MM_CCR, AXI_MCDMA_S2MM_RS);
+	INFO("Start s2mm @ 0x%03x", AXI_MCDMA_S2MM_CCR);
+
+	// Program s2mm tail descriptor
+	_reg_set(device->v_baseaddr, AXI_MCDMA_S2MM_CH1TAILDESC_LSB, device->channels->s2mm_tail_bd_addr);
+	INFO("Programmed s2mm tail bd 0x%08x to 0x%03x", device->channels->s2mm_tail_bd_addr, AXI_MCDMA_S2MM_CH1TAILDESC_LSB);
+
+	// program mm2s
+	res = config_mcdma_mm2s(device);
+	if (res) {
+		ERROR("%s", "failed to config mm2s.");
+	}
+	INFO("%s", "configd mm2s.");
+
+	// Start mm2
+	_reg_set(device->v_baseaddr, AXI_MCDMA_MM2S_CCR, AXI_MCDMA_MM2S_RS);
+	INFO("Start mm2s @ 0x%03x", AXI_MCDMA_MM2S_CCR);
+
+	// Program mm2s tail descriptor
+	_reg_set(device->v_baseaddr, AXI_MCDMA_MM2S_CH1TAILDESC_LSB, device->channels->mm2s_tail_bd_addr);
+	INFO("Programmed mm2s tail bd 0x%08x to 0x%03x", device->channels->mm2s_tail_bd_addr, AXI_MCDMA_MM2S_CH1TAILDESC_LSB);
+
+	// Busy wait
+	uint32_t mm2s_sr = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_CH1SR);
+	while (!(mm2s_sr & AXI_MCDMA_MM2S_CHIDLE)) {
+		mm2s_sr = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_CH1SR);
+	}
+	INFO("%s", "mm2s transfer done.");
+
+	mm2s_common_status(device);
+	mm2s_channel_status(device);
+	mm2s_bd_status(device->channels);
+
+	// Busy wait
+	uint32_t s2mm_sr = _reg_get(device->v_baseaddr, AXI_MCDMA_S2MM_CH1SR);
+	int status_report = 0;
+	while (!(s2mm_sr & AXI_MCDMA_S2MM_CHIDLE)) {
+		s2mm_sr = _reg_get(device->v_baseaddr, AXI_MCDMA_S2MM_CH1SR);
+		if (!status_report) {
+			INFO("s2mm_sr: 0x%08x", s2mm_sr);
+			s2mm_common_status(device);
+			s2mm_channel_status(device);
+			s2mm_bd_status(device->channels);
+			status_report = 1;
+		}
+	}
+	INFO("%s", "s2mm transfer done.");
+
+	s2mm_common_status(device);
+	s2mm_channel_status(device);
+	s2mm_bd_status(device->channels);
+
 	return 0;
+}
+
+int verify_payload(mcdma_device_t *device, int payload_length) {
+	// check the loaded data is correct
+	int error = 0;
+	uint32_t src_data, dst_data;
+	for (int i = 0; i < payload_length; i++) {
+		src_data = _reg_get(device->v_buffer_src_addr, (uint32_t) i*4);
+		dst_data = _reg_get(device->v_buffer_dst_addr, (uint32_t) i*4);
+		if (src_data != dst_data) {
+			error++;
+			ERROR("data mismatch @ payload[%d]: 0x%08x 0x%08x", i, src_data, dst_data);
+		}
+	}
+
+	if (error == 0) {
+		INFO("%s", "0 data mistaches, Success!");
+	} else {
+		ERROR("Oh no! Data mismatches: %d", error);
+	}
+
+	return 0;
+
 }
 
 void free_device(mcdma_device_t *device) {
+
 	INFO("%s", "Freeing device.");
+
+	munmap(device->v_baseaddr, device->size);
+	munmap(device->v_buffer_src_addr, device->size);
+	munmap(device->v_buffer_dst_addr, device->size);
+	munmap(device->channels->mm2s_bd_chain->v_bd_addr, device->size);
+	munmap(device->channels->s2mm_bd_chain->v_bd_addr, device->size);
+
 	WARNING("%s", "Assuming only one bd chain per channel.");
 	free(device->channels->mm2s_bd_chain);
 	free(device->channels->s2mm_bd_chain);
@@ -309,115 +423,154 @@ void free_device(mcdma_device_t *device) {
 	free(device);
 }
 
-void common_status(mcdma_device_t *device) {
-	INFO("common status @ 0x%08x", device->p_baseaddr);
+void mm2s_common_status(mcdma_device_t *device) {
 	uint32_t mm2s_common = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_CSR);
-	if (mm2s_common | AXI_MCDMA_MM2S_HALTED) {
-		INFO("%s", "mm2s_common: halted");
+	// STATUS("mm2s common status @ 0x%08x = 0x%08x", device->p_baseaddr, mm2s_common);
+	if (mm2s_common & AXI_MCDMA_MM2S_HALTED) {
+		STATUS("%s", "mm2s_common: halted");
 	}
-	if (mm2s_common | AXI_MCDMA_MM2S_IDLE) {
-		INFO("%s", "mm2s_common: idle");
-	} else {
-		INFO("%s", "mm2s_common: running");
+	if (mm2s_common & AXI_MCDMA_MM2S_IDLE) {
+		STATUS("%s", "mm2s_common: idle");
 	}
 
 	uint32_t mm2s_ch_prog = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_CHSER);
-	INFO("mm2s_ch_prog: 0x%08x", mm2s_ch_prog);
+	STATUS("mm2s_ch_prog: 0x%08x", mm2s_ch_prog);
 
 	uint32_t mm2s_error = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_ERR);
-	if (mm2s_error | AXI_MCDMA_MM2S_SG_DEC_ERR) {
-		INFO("%s", "mm2s_err: SGDecErr");
+	// STATUS("mm2s error status = 0x%08x", mm2s_error);
+	if (mm2s_error & AXI_MCDMA_MM2S_SG_DEC_ERR) {
+		ERROR("%s", "mm2s_err: SGDecErr");
 	}
-	if (mm2s_error | AXI_MCDMA_MM2S_SG_INT_ERR) {
-		INFO("%s", "mm2s_err: SGIntErr");
+	if (mm2s_error & AXI_MCDMA_MM2S_SG_INT_ERR) {
+		ERROR("%s", "mm2s_err: SGIntErr");
 	}
-	if (mm2s_error | AXI_MCDMA_MM2S_SG_SLV_ERR) {
-		INFO("%s", "mm2s_err: SGSlvErr");
+	if (mm2s_error & AXI_MCDMA_MM2S_SG_SLV_ERR) {
+		ERROR("%s", "mm2s_err: SGSlvErr");
 	}
-	if (mm2s_error | AXI_MCDMA_MM2S_DMA_DEC_ERR) {
-		INFO("%s", "mm2s_err:  DMA Dec Err ");
+	if (mm2s_error & AXI_MCDMA_MM2S_DMA_DEC_ERR) {
+		ERROR("%s", "mm2s_err:  DMA Dec Err ");
 	}
-	if (mm2s_error | AXI_MCDMA_MM2S_DMA_SLV_ERR) {
-		INFO("%s", "mm2s_err: DMA SLv Err");
+	if (mm2s_error & AXI_MCDMA_MM2S_DMA_SLV_ERR) {
+		ERROR("%s", "mm2s_err: DMA SLv Err");
 	}
-	if (mm2s_error | AXI_MCDMA_MM2S_DMA_INTR_ERR) {
-		INFO("%s", "mm2s_err: DMA Intr Err");
+	if (mm2s_error & AXI_MCDMA_MM2S_DMA_INTR_ERR) {
+		ERROR("%s", "mm2s_err: DMA Intr Err");
 	}
+}
 
+void s2mm_common_status(mcdma_device_t *device) {
 	uint32_t s2mm_common = _reg_get(device->v_baseaddr, AXI_MCDMA_S2MM_CSR);
-	if (s2mm_common | AXI_MCDMA_S2MM_HALTED) {
-		INFO("%s", "s2mm_common: halted");
+	// STATUS("s2mm common status = 0x%08x", s2mm_common);
+	if (s2mm_common & AXI_MCDMA_S2MM_HALTED) {
+		STATUS("%s", "s2mm_common: halted");
 	}
-	if (s2mm_common | AXI_MCDMA_S2MM_IDLE) {
-		INFO("%s", "s2mm_common: idle");
-	} else {
-		INFO("%s", "s2mm_common: running");
+	if (s2mm_common & AXI_MCDMA_S2MM_IDLE) {
+		STATUS("%s", "s2mm_common: idle");
 	}
 
 	uint32_t s2mm_error = _reg_get(device->v_baseaddr, AXI_MCDMA_S2MM_ERR);
-	if (s2mm_error | AXI_MCDMA_S2MM_SG_DEC_ERR) {
-		INFO("%s", "s2mm_err: SGDecErr");
+	// STATUS("s2mm error status = 0x%08x", s2mm_error);
+	if (s2mm_error & AXI_MCDMA_S2MM_SG_DEC_ERR) {
+		ERROR("%s", "s2mm_err: SGDecErr");
 	}
-	if (s2mm_error | AXI_MCDMA_S2MM_SG_INT_ERR) {
-		INFO("%s", "s2mm_err: SGIntErr");
+	if (s2mm_error & AXI_MCDMA_S2MM_SG_INT_ERR) {
+		ERROR("%s", "s2mm_err: SGIntErr");
 	}
-	if (s2mm_error | AXI_MCDMA_S2MM_SG_SLV_ERR) {
-		INFO("%s", "s2mm_err: SGSlvErr");
+	if (s2mm_error & AXI_MCDMA_S2MM_SG_SLV_ERR) {
+		ERROR("%s", "s2mm_err: SGSlvErr");
 	}
-	if (s2mm_error | AXI_MCDMA_S2MM_DMA_DEC_ERR) {
-		INFO("%s", "s2mm_err:  DMA Dec Err ");
+	if (s2mm_error & AXI_MCDMA_S2MM_DMA_DEC_ERR) {
+		ERROR("%s", "s2mm_err: DMA Dec Err ");
 	}
-	if (s2mm_error | AXI_MCDMA_S2MM_DMA_SLV_ERR) {
-		INFO("%s", "s2mm_err: DMA SLv Err");
+	if (s2mm_error & AXI_MCDMA_S2MM_DMA_SLV_ERR) {
+		ERROR("%s", "s2mm_err: DMA SLv Err");
 	}
-	if (s2mm_error | AXI_MCDMA_S2MM_DMA_INTR_ERR) {
-		INFO("%s", "s2mm_err: DMA Intr Err");
+	if (s2mm_error & AXI_MCDMA_S2MM_DMA_INTR_ERR) {
+		ERROR("%s", "s2mm_err: DMA Intr Err");
 	}
 
 	uint32_t s2mm_ch_prog = _reg_get(device->v_baseaddr, AXI_MCDMA_S2MM_CHSER);
-	INFO("s2mm_ch_prog: 0x%08x", s2mm_ch_prog);
+	STATUS("s2mm_ch_prog: 0x%08x", s2mm_ch_prog);
 }
 
-void channel_status(mcdma_device_t *device) {
-	INFO("channel 1 status @ 0x%08x", device->p_baseaddr);
+void mm2s_channel_status(mcdma_device_t *device) {
 	uint32_t ch1_mm2s_status = _reg_get(device->v_baseaddr, AXI_MCDMA_MM2S_CH1SR);
-	if (ch1_mm2s_status | AXI_MCDMA_CH_IDLE) {
-		INFO("%s", "ch1_mm2s_status: Idle (Queue Empty) ");
+	// STATUS("ch1_mm2s_status = 0x%08x", ch1_mm2s_status);
+	if (ch1_mm2s_status & AXI_MCDMA_CH_IDLE) {
+		STATUS("%s", "ch1_mm2s_status: Idle (Queue Empty) ");
 	}
-	if (ch1_mm2s_status | AXI_MCDMA_CH_BD_SHORTFALL) {
-		INFO("%s", "ch1_mm2s_status:  BD ShortFall ");
+	if (ch1_mm2s_status & AXI_MCDMA_CH_ERR_OTH_CH) {
+		ERROR("%s", "ch1_mm2s_status: Err_on_other_ch_irq ");
 	}
-	if (ch1_mm2s_status | AXI_MCDMA_CH_ERR_OTH_CH) {
-		INFO("%s", "ch1_mm2s_status:  Err_on_other_ch_irq ");
+	if (ch1_mm2s_status & AXI_MCDMA_CH_IOC_IRQ) {
+		STATUS("%s", "ch1_mm2s_status: IOC_Irq");
 	}
-	if (ch1_mm2s_status | AXI_MCDMA_CH_PKTDROP_IRQ) {
-		INFO("%s", "ch1_mm2s_status:  Pktdrop_irq ");
+	if (ch1_mm2s_status & AXI_MCDMA_CH_DLY_IRQ) {
+		STATUS("%s", "ch1_mm2s_status: DlyIrq");
 	}
-	if (ch1_mm2s_status | AXI_MCDMA_CH_IOC_IRQ) {
-		INFO("%s", "ch1_mm2s_status: IOC_Irq");
-	}
-	if (ch1_mm2s_status | AXI_MCDMA_CH_DLY_IRQ) {
-		INFO("%s", "ch1_mm2s_status: DlyIrq");
-	}
-	if (ch1_mm2s_status | AXI_MCDMA_CH_ERR_IRQ) {
-		INFO("%s", "ch1_mm2s_status:  Err Irq ");
+	if (ch1_mm2s_status & AXI_MCDMA_CH_ERR_IRQ) {
+		ERROR("%s", "ch1_mm2s_status: Err Irq ");
 	}
 }
 
-void bd_status(mcdma_channel_t *channel) {
-	INFO("mm2s bd status @ 0x%08x", channel->mm2s_bd_chain->p_bd_addr);
+void s2mm_channel_status(mcdma_device_t *device) {
+	uint32_t ch1_s2mm_status = _reg_get(device->v_baseaddr, AXI_MCDMA_S2MM_CH1SR);
+	// STATUS("ch1_s2mm_status = 0x%08x", ch1_mm2s_status);
+	if (ch1_s2mm_status & AXI_MCDMA_CH_IDLE) {
+		STATUS("%s", "ch1_s2mm_status: Idle (Queue Empty) ");
+	}
+	if (ch1_s2mm_status & AXI_MCDMA_CH_ERR_OTH_CH) {
+		ERROR("%s", "ch1_s2mm_status: Err_on_other_ch_irq ");
+	}
+	if (ch1_s2mm_status & AXI_MCDMA_CH_IOC_IRQ) {
+		STATUS("%s", "ch1_s2mm_status: IOC_Irq");
+	}
+	if (ch1_s2mm_status & AXI_MCDMA_CH_DLY_IRQ) {
+		STATUS("%s", "ch1_s2mm_status: DlyIrq");
+	}
+	if (ch1_s2mm_status & AXI_MCDMA_CH_ERR_IRQ) {
+		ERROR("%s", "ch1_s2mm_status: Err Irq ");
+	}
+}
+
+void mm2s_bd_status(mcdma_channel_t *channel) {
 	uint32_t mm2s_bd_status = _reg_get(channel->mm2s_bd_chain->v_bd_addr, AXI_MCDMA_MM2S_BD_STATUS);
-	INFO("mm2s_bd_status: bytes transferred = %d", mm2s_bd_status & AXI_MCDMA_MM2S_BD_SBYTE_MASK);
-	if (mm2s_bd_status | AXI_MCDMA_MM2S_BD_DMA_INT_ERR) {
-		INFO("%s", "mm2s_bd_status: DMA Int Err");
+	// STATUS("mm2s bd status = 0x%08x", mm2s_bd_status);
+	STATUS("mm2s_bd_status: %d bytes transferred", mm2s_bd_status & AXI_MCDMA_MM2S_BD_SBYTE_MASK);
+	if (mm2s_bd_status & AXI_MCDMA_MM2S_BD_DMA_INT_ERR) {
+		ERROR("%s", "mm2s_bd_status: DMA Int Err");
 	}
-	if (mm2s_bd_status | AXI_MCDMA_MM2S_BD_DMA_SLV_ERR) {
-		INFO("%s", "mm2s_bd_status: DMA Slave Err ");
+	if (mm2s_bd_status & AXI_MCDMA_MM2S_BD_DMA_SLV_ERR) {
+		ERROR("%s", "mm2s_bd_status: DMA Slave Err ");
 	}
-	if (mm2s_bd_status | AXI_MCDMA_MM2S_BD_DMA_DEC_ERR) {
-		INFO("%s", "mm2s_bd_status: DMA Dec Err");
+	if (mm2s_bd_status & AXI_MCDMA_MM2S_BD_DMA_DEC_ERR) {
+		ERROR("%s", "mm2s_bd_status: DMA Dec Err");
 	}
-	if (mm2s_bd_status | AXI_MCDMA_MM2S_BD_DMA_COMPLETED) {
-		INFO("%s", "mm2s_bd_status: Completed");
+	if (mm2s_bd_status & AXI_MCDMA_MM2S_BD_DMA_COMPLETED) {
+		STATUS("%s", "mm2s_bd_status: Completed");
+	}
+}
+
+void s2mm_bd_status(mcdma_channel_t *channel) {
+	uint32_t s2mm_bd_status = _reg_get(channel->s2mm_bd_chain->v_bd_addr, AXI_MCDMA_S2MM_BD_STATUS);
+	// STATUS("s2mm bd status = 0x%08x", S2MM_bd_status);
+	STATUS("s2mm_bd_status: %d bytes transferred", s2mm_bd_status & AXI_MCDMA_S2MM_BD_SBYTE_MASK);
+	if (s2mm_bd_status & AXI_MCDMA_S2MM_BD_DMA_INT_ERR) {
+		ERROR("%s", "s2mm_bd_status: DMA Int Err");
+	}
+	if (s2mm_bd_status & AXI_MCDMA_S2MM_BD_DMA_SLV_ERR) {
+		ERROR("%s", "s2mm_bd_status: DMA Slave Err ");
+	}
+	if (s2mm_bd_status & AXI_MCDMA_S2MM_BD_DMA_DEC_ERR) {
+		ERROR("%s", "s2mm_bd_status: DMA Dec Err");
+	}
+	if (s2mm_bd_status & AXI_MCDMA_S2MM_BD_DMA_COMPLETED) {
+		STATUS("%s", "s2mm_bd_status: Completed");
+	}
+	if (s2mm_bd_status & AXI_MCDMA_S2MM_BD_DMA_RXSOF) {
+		STATUS("%s", "s2mm_bd_status: SOF");
+	}
+	if (s2mm_bd_status & AXI_MCDMA_S2MM_BD_DMA_RXEOF) {
+		STATUS("%s", "s2mm_bd_status: EOF");
 	}
 }
