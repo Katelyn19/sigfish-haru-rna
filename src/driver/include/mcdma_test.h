@@ -3,5 +3,5 @@
 
 int mcdma_test(int payload_len);
 
-#define PAYLOAD_SEED 5
+#define PAYLOAD_SEED 1
 #endif // HARU_TESTS_H
