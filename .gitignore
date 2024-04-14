@@ -5,3 +5,7 @@ HARU/
 src/driver/build
 mcdma_fifo_test
 mcdma_test
+test/
+sigfish
+build/
+slow5lib/
