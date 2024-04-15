@@ -22,7 +22,6 @@ OBJ = $(BUILD_DIR)/main.o \
 	  $(BUILD_DIR)/jnn.o \
 	  $(BUILD_DIR)/misc.o \
 	  $(BUILD_DIR)/eval.o \
-	  $(BUILD_DIR)/concat.o \
 
 PREFIX = /usr/local
 VERSION = `git describe --tags`
@@ -41,7 +40,7 @@ endif
 $(BINARY): $(OBJ) slow5lib/lib/libslow5.a
 	$(CC) $(CFLAGS) $(OBJ) slow5lib/lib/libslow5.a $(LDFLAGS) -o $@
 
-$(BUILD_DIR)/main.o: src/main.c src/misc.h src/error.h src/sigfish.h src/concat.h
+$(BUILD_DIR)/main.o: src/main.c src/misc.h src/error.h src/sigfish.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/sigfish.o: src/sigfish.c src/misc.h src/error.h src/sigfish.h
@@ -72,9 +71,6 @@ $(BUILD_DIR)/misc.o: src/misc.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/eval.o: src/eval.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
-
-$(BUILD_DIR)/concat.o: src/concat.c src/concat.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 #haru things
