@@ -120,7 +120,8 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
         core->haru = (haru_t *)malloc(sizeof(haru_t));
         MALLOC_CHK(core->haru);
 
-        int ret = haru_init(core->haru);
+        // int ret = haru_init(core->haru);
+        int ret = haru_multi_accel_init(core->haru);
         if (ret != 0) {
             ERROR("%s","haru_init failed\n");
             exit(EXIT_FAILURE);
@@ -180,7 +181,8 @@ core_t* init_core(const char *fastafile, char *slow5file, opt_t opt,double realt
         MALLOC_CHK(ref);
 
         // haru_get_load_done(core->haru);
-        if (haru_load_reference(core->haru, ref, acc_rlen) == 0) {
+        // if (haru_load_reference(core->haru, ref, acc_rlen) == 0) {
+        if (haru_multi_accel_load_reference(core->haru, ref, acc_rlen) == 0) {
             ERROR("%s","Load reference incomplete\n");
             exit(EXIT_FAILURE);
         }
@@ -735,7 +737,7 @@ void dtw_fpga(core_t* core,db_t* db){
 
             int64_t start_idx = db->qstart[i];
             int64_t end_idx = db->qend[i];
-            int64_t n =  db->et[i].n;
+            // int64_t n =  db->et[i].n;
 
             int8_t from_sig_end= core->opt.flag & SIGFISH_END;
             int32_t qlen;
