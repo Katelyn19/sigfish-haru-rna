@@ -33,7 +33,7 @@ endif
 
 ifdef acc
 	OBJ +=	$(BUILD_DIR)/haru.o $(BUILD_DIR)/axi_dma.o $(BUILD_DIR)/dtw_accel.o
-	CPPFLAGS += -DHAVE_ACC=1 -I HARU/driver/include/
+	CPPFLAGS += -DHAVE_ACC=1 -I HARU-multi-accel/driver/include/
 endif
 .PHONY: clean distclean test
 
@@ -74,13 +74,13 @@ $(BUILD_DIR)/eval.o: src/eval.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 #haru things
-$(BUILD_DIR)/haru.o: HARU/driver/src/haru.c HARU/driver/include/axi_dma.h HARU/driver/include/dtw_accel.h HARU/driver/include/misc.h
+$(BUILD_DIR)/haru.o: HARU-multi-accel/driver/src/haru.c HARU-multi-accel/driver/include/axi_dma.h HARU-multi-accel/driver/include/dtw_accel.h HARU-multi-accel/driver/include/misc.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-$(BUILD_DIR)/axi_dma.o: HARU/driver/src/axi_dma.c HARU/driver/include/axi_dma.h
+$(BUILD_DIR)/axi_dma.o: HARU-multi-accel/driver/src/axi_dma.c HARU-multi-accel/driver/include/axi_dma.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
-$(BUILD_DIR)/dtw_accel.o: HARU/driver/src/dtw_accel.c HARU/driver/include/dtw_accel.h HARU/driver/include/misc.h
+$(BUILD_DIR)/dtw_accel.o: HARU-multi-accel/driver/src/dtw_accel.c HARU-multi-accel/driver/include/dtw_accel.h HARU-multi-accel/driver/include/misc.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -c -o $@
 
 slow5lib/lib/libslow5.a:
