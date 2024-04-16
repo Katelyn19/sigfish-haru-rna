@@ -794,7 +794,7 @@ void dtw_fpga(core_t* core,db_t* db){
             search_result_t results;
             
             double haru_start = realtime();
-            haru_process_query(core->haru, query_r, HARU_QLEN+2, &results);
+            haru_multi_accel_process_query(core->haru, query_r, HARU_QLEN+2, &results);
             core->haru_time += realtime() - haru_start;
 
             free(query_r);
