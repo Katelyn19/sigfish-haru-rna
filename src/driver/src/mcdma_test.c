@@ -138,7 +138,7 @@ int config_mcdma(mcdma_device_t * device, int payload_length) {
 		INFO("Channel %d payload:", i);
 		for (int j = 0; j < payload_length; j++) {
 			payload[i][j] = (uint32_t) rand();
-			INFO("%d: 0x%08x", j, payload[i][j]);
+			// INFO("%d: 0x%08x", j, payload[i][j]);
 		}
 	}
 
@@ -414,7 +414,7 @@ int verify_payload(mcdma_device_t *device, int payload_length) {
 		dst_data = _reg_get(device->v_buffer_dst_addr, (uint32_t) i*4);
 		if (src_data != dst_data) {
 			error++;
-			ERROR("data mismatch @ payload[%d]: 0x%08x 0x%08x", i, src_data, dst_data);
+			// ERROR("data mismatch @ payload[%d]: 0x%08x 0x%08x", i, src_data, dst_data);
 		}
 	}
 

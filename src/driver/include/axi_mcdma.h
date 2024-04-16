@@ -21,7 +21,7 @@ typedef struct mcdma_bd mcdma_bd_t;
 /*
     AXI MCDMA Device Config
 */
-#define NUM_CHANNELS 5
+#define NUM_CHANNELS 1
 
 /* mcdma device */
 struct mcdma_device {
